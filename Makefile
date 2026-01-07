@@ -2,15 +2,16 @@
 
 # ---------- DEFAULT (production) ----------
 build:
+	mkdir -p bin
 	cd frontend && npm ci && npm run build
-	cd backend && go build -o ../bin/server ./cmd/server
+	cd backend && go build -o ../bin/server ./server
 
 # ---------- DEVELOPMENT ----------
 dev:
 	@make -j 2 dev-backend dev-frontend
 
 dev-backend:
-	cd backend && go run ./cmd/server
+	cd backend && go run ./server
 
 dev-frontend:
 	cd frontend && npm run dev
