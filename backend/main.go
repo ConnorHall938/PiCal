@@ -7,46 +7,53 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"strconv"
+
+	"pical/database"
+	"pical/server"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+
+	err := godotenv.Load("../.env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	dist, err := findFrontendDist()
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("Serving UI from: %s", dist)
 
-	mux := http.NewServeMux()
+	port, _ := strconv.Atoi(getenv("DB_PORT", "5432"))
 
-	// API
-	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"ok": true}`))
+	conn, err := database.Open(database.Config{
+		Host:     getenv("DB_HOST", "localhost"),
+		Port:     port,
+		User:     getenv("DB_USER", "postgres"),
+		Password: getenv("DB_PASSWORD", ""),
+		Name:     getenv("DB_NAME", "postgres"),
+		SSLMode:  getenv("DB_SSLMODE", "disable"),
 	})
+	if err != nil {
+		log.Fatalf("db open: %v", err)
+	}
+	defer conn.Close()
 
-	fs := http.FileServer(http.Dir(dist))
+	s := server.New(conn, dist)
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Never let /api fall through to SPA
-		if strings.HasPrefix(r.URL.Path, "/api/") {
-			http.NotFound(w, r)
-			return
-		}
+	log.Println("listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", s.Mux))
+}
 
-		// Serve real files if present
-		path := filepath.Join(dist, filepath.Clean(r.URL.Path))
-		if info, err := os.Stat(path); err == nil && !info.IsDir() {
-			fs.ServeHTTP(w, r)
-			return
-		}
-
-		// SPA fallback
-		http.ServeFile(w, r, filepath.Join(dist, "index.html"))
-	})
-
-	log.Println("Listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+func getenv(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
 }
 
 func findFrontendDist() (string, error) {

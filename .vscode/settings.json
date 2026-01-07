@@ -1,0 +1,21 @@
+{
+    "dbcode.connections": [
+        {
+            "connectionId": "EOgAtDl5HW5u4BVUJVlgK",
+            "name": "Local",
+            "driver": "postgres",
+            "connectionType": "host",
+            "host": "localhost",
+            "port": 5432,
+            "ssl": false,
+            "authMethod": "password",
+            "username": "postgres",
+            "password": "Acd1n3dnd+x9S4OG/V6aj17TyGxVM4C7TaCvNQjQIxuRCQzrQIY=",
+            "savePassword": "encrypted",
+            "salt": "yce2MoagEIsXk3npsCsgRw==",
+            "readOnly": false,
+            "postConnectionSqlType": "inline",
+            "connectionTimeout": 30
+        }
+    ]
+}
