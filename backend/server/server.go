@@ -3,6 +3,8 @@ package server
 import (
 	"database/sql"
 	"net/http"
+
+	"pical/database/schemas"
 )
 
 type Server struct {
@@ -28,7 +30,21 @@ func (s *Server) routes() {
 	)
 
 	s.Mux.HandleFunc("/health", s.health)
-	// s.Mux.HandleFunc("/users", s.listUsers)
+	s.Mux.HandleFunc("/events", s.createEvents)
+}
+
+func (s *Server) createEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context() // request-scoped context
+
+	targetSchema := schemas.CreateEventSchema()
+
+	if err := schemas.CreateSchema(ctx, s.DB, targetSchema); err != nil {
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("ok"))
 }
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {

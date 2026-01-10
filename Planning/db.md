@@ -26,6 +26,5 @@ erDiagram
     string kind "cancel|override"
     timestamptz new_start_at "NULL unless override"
     timestamptz new_end_at "NULL unless override"
-    string new_title "NULL unless override"
   }
 ```
