@@ -2,13 +2,21 @@ package schemas
 
 import "time"
 
+type OccurrenceType int
+
+const (
+	OccurrenceNormal OccurrenceType = iota
+	OccurrenceMoved
+	OccurrenceCancelled
+)
+
 type Occurrence struct {
-	EventID      string
-	StartTime    time.Time
-	EndTime      *time.Time
-	Moved        bool
-	NewStartTime *time.Time
-	NewEndTime   *time.Time
+	EventID      string         `json:"eventId"`
+	StartTime    time.Time      `json:"startTime"`
+	EndTime      *time.Time     `json:"endTime,omitempty"`
+	Kind         OccurrenceType `json:"moved"`
+	NewStartTime *time.Time     `json:"newStartTime,omitempty"`
+	NewEndTime   *time.Time     `json:"newEndTime,omitempty"`
 }
 
 func CreateOccurrenceSchema() Schema {

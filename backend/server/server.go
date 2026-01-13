@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"time"
 )
 
 type Server struct {
@@ -34,6 +35,22 @@ func (s *Server) routes() {
 	)
 
 	s.Mux.HandleFunc("/health", s.health)
+
+	dbTimeoutMiddleware := TimeoutMiddleware(10 * time.Second)
+
+	s.Mux.Handle("/events", dbTimeoutMiddleware(http.HandlerFunc(s.eventHandler)))
+}
+
+func (s *Server) eventHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.getEvents(w, r)
+	case http.MethodPost:
+		s.createEvent(w, r)
+	default:
+		w.Header().Set("Allow", "GET, POST")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {

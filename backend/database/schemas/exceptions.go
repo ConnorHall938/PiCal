@@ -12,11 +12,11 @@ const (
 )
 
 type Exception struct {
-	EventID      string
-	RecurrenceID string
-	Kind         ExceptionType
-	NewStart     time.Time
-	NewEnd       time.Time
+	EventID      string        `json:"eventId"`
+	RecurrenceID string        `json:"recurrenceId"`
+	Kind         ExceptionType `json:"kind"`
+	NewStart     *time.Time    `json:"newStart,omitempty"`
+	NewEnd       *time.Time    `json:"newEnd,omitempty"`
 }
 
 func CreateExceptionSchema() Schema {
@@ -32,9 +32,11 @@ func CreateExceptionSchema() Schema {
 		Column{Name: "kind",
 			Type: ColumnInt},
 		Column{Name: "newStart",
-			Type: ColumnTimestamp},
+			Type:     ColumnTimestamp,
+			Nullable: true},
 		Column{Name: "newEnd",
-			Type: ColumnTimestamp},
+			Type:     ColumnTimestamp,
+			Nullable: true},
 	)
 
 	schema := Schema{Name: "exceptions", Columns: cols}
