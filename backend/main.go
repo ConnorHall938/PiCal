@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"syscall"
+	"time"
 
 	"pical/database"
 	"pical/server"
@@ -16,6 +20,9 @@ import (
 )
 
 func main() {
+	// Root lifetime context: canceled on SIGINT/SIGTERM
+	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	err := godotenv.Load("../.env")
 	if err != nil {
@@ -43,10 +50,37 @@ func main() {
 	}
 	defer conn.Close()
 
-	s := server.New(conn, dist)
+	s, err := server.New(rootCtx, conn, dist)
+	if err != nil {
+		log.Fatalf("Failed to create server! %v", err)
+	}
 
-	log.Println("listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", s.Mux))
+	httpSrv := &http.Server{
+		Addr:    ":8080",
+		Handler: s.Mux,
+	}
+
+	// Run server in background
+	go func() {
+		log.Println("listening on :8080")
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-rootCtx.Done()
+	log.Println("shutdown signal received")
+
+	// Graceful shutdown (finish inflight requests)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("http shutdown error: %v", err)
+	}
+
+	log.Println("shutdown complete")
 }
 
 func getenv(k, def string) string {
@@ -55,6 +89,8 @@ func getenv(k, def string) string {
 	}
 	return def
 }
+
+// Finding the frontend directory
 
 func findFrontendDist() (string, error) {
 	// 0) Explicit override (handy for weird deployments)

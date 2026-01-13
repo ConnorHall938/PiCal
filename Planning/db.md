@@ -5,7 +5,7 @@ erDiagram
 
   EVENT {
     uuid event_id PK
-    uuid user_id
+    string person_name
     string title
     string notes
     string timezone
@@ -15,9 +15,11 @@ erDiagram
 
   OCCURRENCE {
     uuid event_id PK,FK
-    timestamptz start_at PK
-    timestamptz end_at PK
+    timestamptz startTime PK
+    timestamptz endTime PK
     boolean is_override
+    timestamptz newStartTime
+    timestamptz newEndTime
   }
 
   RRULE_EXCEPTION {

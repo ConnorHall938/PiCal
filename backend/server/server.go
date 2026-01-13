@@ -1,10 +1,9 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
-
-	"pical/database/schemas"
 )
 
 type Server struct {
@@ -13,15 +12,20 @@ type Server struct {
 	Fs  http.Handler
 }
 
-func New(db *sql.DB, frontendDistDir string) *Server {
+func New(ctx context.Context, db *sql.DB, frontendDistDir string) (*Server, error) {
 	s := &Server{
 		DB:  db,
 		Mux: http.NewServeMux(),
 		Fs:  http.FileServer(http.Dir(frontendDistDir)),
 	}
 
+	err := s.initDatabase(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	s.routes()
-	return s
+	return s, nil
 }
 
 func (s *Server) routes() {
@@ -30,21 +34,6 @@ func (s *Server) routes() {
 	)
 
 	s.Mux.HandleFunc("/health", s.health)
-	s.Mux.HandleFunc("/events", s.createEvents)
-}
-
-func (s *Server) createEvents(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context() // request-scoped context
-
-	targetSchema := schemas.CreateEventSchema()
-
-	if err := schemas.CreateSchema(ctx, s.DB, targetSchema); err != nil {
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
 }
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {

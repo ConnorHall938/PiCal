@@ -11,7 +11,7 @@ dev:
 	@make -j 2 dev-backend dev-frontend
 
 dev-backend:
-	cd backend && go run ./server
+	cd backend && go run .
 
 dev-frontend:
 	cd frontend && npm run dev

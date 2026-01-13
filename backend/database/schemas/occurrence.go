@@ -17,7 +17,7 @@ func CreateOccurrenceSchema() Schema {
 		Column{Name: "eventID",
 			Type:       ColumnUUID,
 			PrimaryKey: true,
-			ForeignKey: []ForeignKeyMatch{{TargetSchema: "Events", ColumnName: "eventID"}}},
+			ForeignKey: []ForeignKeyMatch{{TargetSchema: "Events", ColumnName: "eventID", OnDelete: FKCascade}}},
 		Column{Name: "startTime",
 			Type: ColumnTimestamp},
 		Column{Name: "endTime",

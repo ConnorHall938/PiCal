@@ -25,7 +25,7 @@ func CreateExceptionSchema() Schema {
 		Column{Name: "eventID",
 			Type:       ColumnUUID,
 			PrimaryKey: true,
-			ForeignKey: []ForeignKeyMatch{{TargetSchema: "events", ColumnName: "eventID"}}},
+			ForeignKey: []ForeignKeyMatch{{TargetSchema: "events", ColumnName: "eventID", OnDelete: FKCascade}}},
 		Column{Name: "recurrenceID",
 			Type:       ColumnTimestamp,
 			PrimaryKey: true},

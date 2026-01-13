@@ -1,12 +1,13 @@
 package schemas
 
 type Event struct {
-	EventID  string
-	Title    string
-	Notes    *string
-	Timezone string
-	AllDay   bool
-	Rrule    *string
+	EventID    string
+	PersonName string
+	Title      string
+	Notes      *string
+	Timezone   string
+	AllDay     bool
+	Rrule      *string
 }
 
 func CreateEventSchema() Schema {
@@ -16,6 +17,8 @@ func CreateEventSchema() Schema {
 			Type:           ColumnUUID,
 			PrimaryKey:     true,
 			DefaultSQLExpr: DefaultUUID()},
+		Column{Name: "personName",
+			Type: ColumnString},
 		Column{Name: "title",
 			Type: ColumnString},
 		Column{Name: "notes",

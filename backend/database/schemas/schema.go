@@ -41,9 +41,21 @@ const (
 	ColumnUUID
 )
 
+type ForeignKeyAction string
+
+const (
+	FKNoAction   ForeignKeyAction = "NO ACTION"
+	FKRestrict   ForeignKeyAction = "RESTRICT"
+	FKSetNull    ForeignKeyAction = "SET NULL"
+	FKSetDefault ForeignKeyAction = "SET DEFAULT"
+	FKCascade    ForeignKeyAction = "CASCADE"
+)
+
 type ForeignKeyMatch struct {
 	TargetSchema string
 	ColumnName   string
+	OnDelete     ForeignKeyAction // optional
+	OnUpdate     ForeignKeyAction // optional
 }
 
 type Column struct {
@@ -69,7 +81,7 @@ func columnTypeToString(colType ColumnType) string {
 	case ColumnBool:
 		return "boolean"
 	case ColumnTimestamp:
-		return "timestamptzc"
+		return "timestamptz"
 	case ColumnUUID:
 		return "uuid"
 	default:
@@ -78,7 +90,7 @@ func columnTypeToString(colType ColumnType) string {
 	}
 }
 
-func columnToString(col Column) string {
+func columnToString(col Column, pkCount int) string {
 	var parts []string
 
 	// name + type
@@ -86,7 +98,7 @@ func columnToString(col Column) string {
 	parts = append(parts, columnTypeToString(col.Type))
 
 	// constraints
-	if col.PrimaryKey {
+	if col.PrimaryKey && pkCount <= 1 {
 		parts = append(parts, "PRIMARY KEY")
 	}
 	if !col.Nullable {
@@ -98,18 +110,39 @@ func columnToString(col Column) string {
 
 	// foreign keys (if you allow multiple, emit multiple REFERENCES clauses)
 	for _, fk := range col.ForeignKey {
-		parts = append(parts, "REFERENCES "+fk.TargetSchema+"("+fk.ColumnName+")")
+		ref := "REFERENCES " + fk.TargetSchema + "(" + fk.ColumnName + ")"
+
+		if fk.OnDelete != "" {
+			ref += " ON DELETE " + string(fk.OnDelete)
+		}
+		if fk.OnUpdate != "" {
+			ref += " ON UPDATE " + string(fk.OnUpdate)
+		}
+
+		parts = append(parts, ref)
 	}
 
 	return strings.Join(parts, " ")
 }
 
 func schemaToCreationString(schema Schema) string {
-	var cols []string
-	cols = make([]string, 0, len(schema.Columns))
+	cols := make([]string, 0, len(schema.Columns))
+
+	// Collect PK columns
+	var pkCols []string
+	for _, col := range schema.Columns {
+		if col.PrimaryKey {
+			pkCols = append(pkCols, col.Name)
+		}
+	}
 
 	for _, col := range schema.Columns {
-		cols = append(cols, columnToString(col))
+		cols = append(cols, columnToString(col, len(pkCols)))
+	}
+
+	// Add table-level primary key if needed
+	if len(pkCols) > 1 {
+		cols = append(cols, "PRIMARY KEY ("+strings.Join(pkCols, ", ")+")")
 	}
 
 	return "CREATE TABLE IF NOT EXISTS " + schema.Name + " (" + strings.Join(cols, ", ") + ");"
