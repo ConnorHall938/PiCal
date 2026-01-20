@@ -4,3 +4,7 @@ DB_NAME=appdb
 DB_USER=appuser
 DB_PASSWORD=supersecretpassword
 DB_SSLMODE=disable
+WIFI_SSID=WifiSSID
+WIFI_PASSWORD=otherSuperSecretPassword
+WIFI_COUNTRY=GB
+ROOT_PASSWORD=password123
