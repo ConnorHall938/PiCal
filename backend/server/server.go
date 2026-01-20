@@ -13,6 +13,14 @@ type Server struct {
 	Fs  http.Handler
 }
 
+type PagedResponse[T any] struct {
+	Items  []T `json:"items"`
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+	Count  int `json:"count"`
+	Total  int `json:"total"`
+}
+
 func New(ctx context.Context, db *sql.DB, frontendDistDir string) (*Server, error) {
 	s := &Server{
 		DB:  db,

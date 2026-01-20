@@ -83,33 +83,58 @@ func CreateEvent(ctx context.Context, db *sql.DB, in Event) (Event, error) {
 	return out, nil
 }
 
-// ListEvents returns all events (add paging later).
-func ListEvents(ctx context.Context, db *sql.DB) ([]Event, error) {
+func ListEvents(
+	ctx context.Context,
+	db *sql.DB,
+	limit, offset int,
+) ([]Event, int, error) {
+
 	if db == nil {
-		return nil, fmt.Errorf("db is nil")
+		return nil, 0, fmt.Errorf("db is nil")
 	}
 
 	rows, err := db.QueryContext(ctx, `
-		SELECT eventID, personName, title, notes, timezone, allDay, rrule
+		SELECT
+			eventID,
+			personName,
+			title,
+			notes,
+			timezone,
+			allDay,
+			rrule,
+			COUNT(*) OVER() AS total_count
 		FROM events
-		ORDER BY personName, title, eventID;
-	`)
+		ORDER BY personName, title, eventID
+		LIMIT $1 OFFSET $2;
+	`, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("list events query: %w", err)
+		return nil, 0, fmt.Errorf("list events query: %w", err)
 	}
 	defer rows.Close()
 
-	out := make([]Event, 0)
+	events := make([]Event, 0, limit)
+	total := 0
+
 	for rows.Next() {
 		var e Event
-		if err := rows.Scan(&e.EventID, &e.PersonName, &e.Title, &e.Notes, &e.Timezone, &e.AllDay, &e.Rrule); err != nil {
-			return nil, fmt.Errorf("list events scan: %w", err)
+		if err := rows.Scan(
+			&e.EventID,
+			&e.PersonName,
+			&e.Title,
+			&e.Notes,
+			&e.Timezone,
+			&e.AllDay,
+			&e.Rrule,
+			&total, // same value for every row
+		); err != nil {
+			return nil, 0, fmt.Errorf("list events scan: %w", err)
 		}
-		out = append(out, e)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list events rows: %w", err)
+		events = append(events, e)
 	}
 
-	return out, nil
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("list events rows: %w", err)
+	}
+
+	return events, total, nil
 }

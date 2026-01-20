@@ -4,16 +4,46 @@ import (
 	"encoding/json"
 	"net/http"
 	"pical/database/schemas"
+	"strconv"
 )
 
+func parseIntQuery(r *http.Request, key string, def, min, max int) int {
+	v := r.URL.Query().Get(key)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return def
+	}
+	if n < min {
+		return min
+	}
+	if n > max {
+		return max
+	}
+	return n
+}
+
 func (s *Server) getEvents(w http.ResponseWriter, r *http.Request) {
-	events, err := schemas.ListEvents(r.Context(), s.DB)
+	limit := parseIntQuery(r, "limit", 50, 1, 200)
+	offset := parseIntQuery(r, "offset", 0, 0, 1_000_000)
+
+	items, total, err := schemas.ListEvents(r.Context(), s.DB, limit, offset)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, events)
+	resp := PagedResponse[schemas.Event]{
+		Items:  items,
+		Limit:  limit,
+		Offset: offset,
+		Count:  len(items),
+		Total:  total,
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) createEvent(w http.ResponseWriter, r *http.Request) {
