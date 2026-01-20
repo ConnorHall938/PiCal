@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 )
 
 type Event struct {
@@ -83,6 +84,32 @@ func CreateEvent(ctx context.Context, db *sql.DB, in Event) (Event, error) {
 	return out, nil
 }
 
+func DeleteEvent(
+	ctx context.Context,
+	db *sql.DB,
+	id string,
+) error {
+	if db == nil {
+		return fmt.Errorf("db is nil")
+	}
+
+	result, err := db.ExecContext(ctx, `
+		DELETE FROM events WHERE eventID = $1`, id)
+	if err != nil {
+		return fmt.Errorf("Failed to execute event delete statement: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("could not get rows affected: %v", err)
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
 func ListEvents(
 	ctx context.Context,
 	db *sql.DB,
@@ -137,4 +164,39 @@ func ListEvents(
 	}
 
 	return events, total, nil
+}
+
+func GetEvent(
+	ctx context.Context,
+	db *sql.DB,
+	id string,
+) (*Event, error) {
+	if db == nil {
+		return nil, fmt.Errorf("db is nil")
+	}
+
+	row := db.QueryRowContext(ctx, `
+		SELECT eventID, personName, title, notes, timezone, allDay, rrule
+		FROM events
+		WHERE eventID = $1
+	`, id)
+
+	if row.Err() != nil {
+		return nil, fmt.Errorf("Failed to query events: %w", row.Err())
+	}
+
+	var e Event
+	if err := row.Scan(
+		&e.EventID,
+		&e.PersonName,
+		&e.Title,
+		&e.Notes,
+		&e.Timezone,
+		&e.AllDay,
+		&e.Rrule,
+	); err != nil {
+		return nil, fmt.Errorf("list events scan: %w", err)
+	}
+
+	return &e, nil
 }

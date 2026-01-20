@@ -4,22 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"strings"
 	"time"
 )
-
-type Server struct {
-	DB  *sql.DB
-	Mux *http.ServeMux
-	Fs  http.Handler
-}
-
-type PagedResponse[T any] struct {
-	Items  []T `json:"items"`
-	Limit  int `json:"limit"`
-	Offset int `json:"offset"`
-	Count  int `json:"count"`
-	Total  int `json:"total"`
-}
 
 func New(ctx context.Context, db *sql.DB, frontendDistDir string) (*Server, error) {
 	s := &Server{
@@ -47,6 +34,7 @@ func (s *Server) routes() {
 	dbTimeoutMiddleware := TimeoutMiddleware(10 * time.Second)
 
 	s.Mux.Handle("/events", dbTimeoutMiddleware(http.HandlerFunc(s.eventHandler)))
+	s.Mux.Handle("/events/", dbTimeoutMiddleware(http.HandlerFunc(s.eventByIDHandler)))
 }
 
 func (s *Server) eventHandler(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +45,28 @@ func (s *Server) eventHandler(w http.ResponseWriter, r *http.Request) {
 		s.createEvent(w, r)
 	default:
 		w.Header().Set("Allow", "GET, POST")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) eventByIDHandler(w http.ResponseWriter, r *http.Request) {
+	// Path is like "/events/{id}" (because this handler is registered at "/events/")
+	id := strings.TrimPrefix(r.URL.Path, "/events/")
+	id = strings.Trim(id, "/") // defensive: "/events/{id}/"
+
+	// Reject "/events/" (no id) and deeper paths like "/events/a/b"
+	if id == "" || strings.Contains(id, "/") {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		s.getEvent(w, r, id)
+	case http.MethodDelete:
+		s.deleteEvent(w, r, id)
+	default:
+		w.Header().Set("Allow", "GET, DELETE")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }

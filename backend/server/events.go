@@ -1,29 +1,12 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"pical/database/schemas"
-	"strconv"
 )
-
-func parseIntQuery(r *http.Request, key string, def, min, max int) int {
-	v := r.URL.Query().Get(key)
-	if v == "" {
-		return def
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return def
-	}
-	if n < min {
-		return min
-	}
-	if n > max {
-		return max
-	}
-	return n
-}
 
 func (s *Server) getEvents(w http.ResponseWriter, r *http.Request) {
 	limit := parseIntQuery(r, "limit", 50, 1, 200)
@@ -62,4 +45,34 @@ func (s *Server) createEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, created)
+}
+
+func (s *Server) deleteEvent(w http.ResponseWriter, r *http.Request, id string) {
+
+	err := schemas.DeleteEvent(r.Context(), s.DB, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "event not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) getEvent(w http.ResponseWriter, r *http.Request, id string) {
+
+	out, err := schemas.GetEvent(r.Context(), s.DB, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "event not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, out)
 }
