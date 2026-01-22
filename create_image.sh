@@ -52,7 +52,7 @@ trap cleanup EXIT
 check_dependencies() {
     log_info "Checking dependencies..."
     
-    local deps=(losetup mount wget xz)
+    local deps=(losetup mount wget xz git ssh-keygen)
     local missing=()
     
     for dep in "${deps[@]}"; do
@@ -174,6 +174,214 @@ run_in_chroot() {
     sudo chroot "${WORK_DIR}/rootfs" /bin/bash -c "$1"
 }
 
+clone_repo() {
+    log_info "Cloning repository..."
+    
+    # Get remote URL from local repo
+    local REMOTE_URL=$(git -C "${SCRIPT_DIR}" remote get-url origin)
+    if [[ -z "${REMOTE_URL}" ]]; then
+        log_error "Could not get remote URL from local repo"
+        exit 1
+    fi
+    log_info "Remote URL: ${REMOTE_URL}"
+    
+    # Get current branch
+    local CURRENT_BRANCH=$(git -C "${SCRIPT_DIR}" rev-parse --abbrev-ref HEAD)
+    log_info "Current branch: ${CURRENT_BRANCH}"
+    
+    # Check if branch exists on remote
+    if git -C "${SCRIPT_DIR}" ls-remote --heads origin "${CURRENT_BRANCH}" | grep -q "${CURRENT_BRANCH}"; then
+        log_info "Branch exists on remote, cloning..."
+    else
+        log_warn "Branch ${CURRENT_BRANCH} not found on remote, using default branch"
+        CURRENT_BRANCH=""
+    fi
+    
+    # Clone into work directory
+    local REPO_DIR="${WORK_DIR}/repo"
+    rm -rf "${REPO_DIR}"
+    
+    if [[ -n "${CURRENT_BRANCH}" ]]; then
+        git clone --depth 1 --branch "${CURRENT_BRANCH}" "${REMOTE_URL}" "${REPO_DIR}"
+    else
+        git clone --depth 1 "${REMOTE_URL}" "${REPO_DIR}"
+    fi
+    
+    log_info "Repository cloned successfully"
+}
+
+generate_ssh_key() {
+    log_info "Generating SSH keypair for pical user..."
+    
+    local SSH_DIR="${WORK_DIR}/ssh_key"
+    rm -rf "${SSH_DIR}"
+    mkdir -p "${SSH_DIR}"
+    
+    ssh-keygen -t ed25519 -f "${SSH_DIR}/id_ed25519" -N "" -C "pical@pical"
+    
+    SSH_PRIVATE_KEY="${SSH_DIR}/id_ed25519"
+    SSH_PUBLIC_KEY="${SSH_DIR}/id_ed25519.pub"
+    
+    echo ""
+    echo "========================================"
+    echo "Add this public key to GitHub:"
+    echo "========================================"
+    cat "${SSH_PUBLIC_KEY}"
+    echo "========================================"
+    echo ""
+}
+
+install_repo_and_ssh() {
+    log_info "Installing repo and SSH key into image..."
+    
+    local ROOTFS="${WORK_DIR}/rootfs"
+    
+    # Copy repo to /opt/pical
+    sudo mkdir -p "${ROOTFS}/opt/pical"
+    sudo cp -r "${WORK_DIR}/repo/." "${ROOTFS}/opt/pical/"
+    
+    # Copy .env file
+    sudo cp "${ENV_FILE}" "${ROOTFS}/opt/pical/.env"
+    
+    sudo chown -R 1000:1000 "${ROOTFS}/opt/pical"
+    
+    # Install SSH key for pical user (for GitHub access)
+    sudo mkdir -p "${ROOTFS}/home/pical/.ssh"
+    sudo cp "${SSH_PRIVATE_KEY}" "${ROOTFS}/home/pical/.ssh/id_ed25519"
+    sudo cp "${SSH_PUBLIC_KEY}" "${ROOTFS}/home/pical/.ssh/id_ed25519.pub"
+    sudo chmod 700 "${ROOTFS}/home/pical/.ssh"
+    sudo chmod 600 "${ROOTFS}/home/pical/.ssh/id_ed25519"
+    sudo chmod 644 "${ROOTFS}/home/pical/.ssh/id_ed25519.pub"
+    sudo chown -R 1000:1000 "${ROOTFS}/home/pical/.ssh"
+}
+
+install_setup_script() {
+    log_info "Installing first-boot setup script..."
+    
+    local ROOTFS="${WORK_DIR}/rootfs"
+    
+    sudo tee "${ROOTFS}/opt/pical-setup.sh" > /dev/null << 'SETUPEOF'
+#!/bin/bash
+set -euo pipefail
+
+LOG_FILE="/var/log/pical-setup.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "=========================================="
+echo "PiCal First Boot Setup - $(date)"
+echo "=========================================="
+
+# Install dependencies
+echo "[1/5] Installing packages..."
+apt-get update
+apt-get install -y \
+    golang \
+    cage \
+    chromium \
+    fonts-dejavu \
+    ca-certificates \
+    curl \
+    gnupg
+
+# Install Node.js 25 via NodeSource
+curl -fsSL https://deb.nodesource.com/setup_25.x | bash -
+apt-get install -y nodejs
+
+# Build the application
+echo "[2/5] Building application..."
+cd /opt/pical
+HOME=/root make build
+
+# Create systemd service for the app
+echo "[3/5] Creating pical service..."
+cat > /etc/systemd/system/pical.service << EOF
+[Unit]
+Description=PiCal Server
+After=network.target
+
+[Service]
+Type=simple
+User=pical
+WorkingDirectory=/opt/pical
+ExecStart=/opt/pical/bin/server
+Restart=always
+RestartSec=5
+Environment=HOME=/home/pical
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable pical.service
+
+# Configure kiosk mode via autologin
+echo "[4/5] Configuring kiosk mode..."
+
+# Create kiosk startup script
+cat > /home/pical/kiosk.sh << 'EOF'
+#!/bin/bash
+# Wait for pical server to be ready
+sleep 5
+exec cage -s -- chromium --kiosk --noerrdialogs --disable-infobars --no-first-run --enable-features=OverlayScrollbar --start-fullscreen http://localhost:8080
+EOF
+chmod +x /home/pical/kiosk.sh
+chown pical:pical /home/pical/kiosk.sh
+
+# Create .bash_profile to auto-start kiosk on tty1 login
+cat > /home/pical/.bash_profile << 'EOF'
+if [ "$(tty)" = "/dev/tty1" ]; then
+    exec /home/pical/kiosk.sh
+fi
+EOF
+chown pical:pical /home/pical/.bash_profile
+
+# Configure autologin on tty1
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin pical --noclear %I \$TERM
+EOF
+
+# Disable this setup service
+echo "[5/5] Finalizing..."
+systemctl disable pical-first-boot.service
+
+echo "=========================================="
+echo "Setup complete! Rebooting..."
+echo "=========================================="
+
+reboot
+SETUPEOF
+
+    sudo chmod +x "${ROOTFS}/opt/pical-setup.sh"
+    
+    # Create first-boot service
+    sudo tee "${ROOTFS}/etc/systemd/system/pical-first-boot.service" > /dev/null << 'EOF'
+[Unit]
+Description=PiCal First Boot Setup
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=!/var/lib/pical-setup-complete
+
+[Service]
+Type=oneshot
+ExecStart=/opt/pical-setup.sh
+ExecStartPost=/bin/touch /var/lib/pical-setup-complete
+RemainAfterExit=yes
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    run_in_chroot "systemctl enable pical-first-boot.service"
+    
+    log_info "Setup script installed"
+}
+
 configure_system() {
     log_info "Configuring system..."
     
@@ -286,11 +494,15 @@ main() {
     
     check_dependencies
     load_env
+    clone_repo
+    generate_ssh_key
     download_image
     mount_image
     
     configure_system
     configure_wifi
+    install_repo_and_ssh
+    install_setup_script
     
     finalize
     cleanup

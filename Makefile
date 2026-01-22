@@ -4,7 +4,7 @@
 build:
 	mkdir -p bin
 	cd frontend && npm ci && npm run build
-	cd backend && go build -o ../bin/server ./server
+	cd backend && go build -o ../bin/server .
 
 # ---------- DEVELOPMENT ----------
 dev:
