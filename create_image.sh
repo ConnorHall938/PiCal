@@ -291,6 +291,8 @@ apt-get install -y nodejs
 echo "[2/5] Building application..."
 cd /opt/pical
 HOME=/root make build
+chmod +x /opt/pical/bin/server
+chown -R pical:pical /opt/pical
 
 # Create systemd service for the app
 echo "[3/5] Creating pical service..."
@@ -302,7 +304,7 @@ After=network.target
 [Service]
 Type=simple
 User=pical
-WorkingDirectory=/opt/pical
+WorkingDirectory=/opt/pical/bin
 ExecStart=/opt/pical/bin/server
 Restart=always
 RestartSec=5
@@ -343,6 +345,8 @@ cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
 ExecStart=
 ExecStart=-/sbin/agetty --autologin pical --noclear %I \$TERM
 EOF
+
+systemctl enable getty@tty1
 
 # Disable this setup service
 echo "[5/5] Finalizing..."
