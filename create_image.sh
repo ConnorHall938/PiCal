@@ -4,9 +4,16 @@ set -euo pipefail
 # PiCal Raspberry Pi Image Builder
 # Downloads and customizes Raspberry Pi OS Lite (Trixie) for Pi 5
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORK_DIR="${SCRIPT_DIR}/pical-image-build"
-ENV_FILE="${SCRIPT_DIR}/.env"
+# When running in Docker, use /workspace. Otherwise use script directory.
+if [[ -d "/workspace" ]] && [[ -f "/workspace/.env" ]]; then
+    BASE_DIR="/workspace"
+else
+    BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+WORK_DIR="${BASE_DIR}/pical-image-build"
+ENV_FILE="${BASE_DIR}/.env"
+OUTPUT_DIR="${BASE_DIR}/output"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -17,34 +24,47 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Track loop device for cleanup
+LOOP_DEV=""
+
 cleanup() {
+    local exit_code=$?
     log_info "Cleaning up..."
     
-    if mountpoint -q "${WORK_DIR}/rootfs/dev/pts" 2>/dev/null; then
-        sudo umount "${WORK_DIR}/rootfs/dev/pts" || true
-    fi
-    if mountpoint -q "${WORK_DIR}/rootfs/dev" 2>/dev/null; then
-        sudo umount "${WORK_DIR}/rootfs/dev" || true
-    fi
-    if mountpoint -q "${WORK_DIR}/rootfs/sys" 2>/dev/null; then
-        sudo umount "${WORK_DIR}/rootfs/sys" || true
-    fi
-    if mountpoint -q "${WORK_DIR}/rootfs/proc" 2>/dev/null; then
-        sudo umount "${WORK_DIR}/rootfs/proc" || true
-    fi
-    if mountpoint -q "${WORK_DIR}/rootfs/boot/firmware" 2>/dev/null; then
-        sudo umount "${WORK_DIR}/rootfs/boot/firmware" || true
-    fi
-    if mountpoint -q "${WORK_DIR}/rootfs" 2>/dev/null; then
-        sudo umount "${WORK_DIR}/rootfs" || true
-    fi
-    if mountpoint -q "${WORK_DIR}/boot" 2>/dev/null; then
-        sudo umount "${WORK_DIR}/boot" || true
-    fi
+    # Unmount in reverse order
+    local mounts=(
+        "${WORK_DIR}/rootfs/dev/pts"
+        "${WORK_DIR}/rootfs/dev"
+        "${WORK_DIR}/rootfs/sys"
+        "${WORK_DIR}/rootfs/proc"
+        "${WORK_DIR}/rootfs/boot/firmware"
+        "${WORK_DIR}/rootfs"
+        "${WORK_DIR}/boot"
+    )
     
+    for mount in "${mounts[@]}"; do
+        if mountpoint -q "${mount}" 2>/dev/null; then
+            log_info "Unmounting ${mount}..."
+            sudo umount -l "${mount}" 2>/dev/null || true
+        fi
+    done
+    
+    # Detach loop device
     if [[ -n "${LOOP_DEV:-}" ]]; then
+        log_info "Detaching loop device ${LOOP_DEV}..."
         sudo losetup -d "${LOOP_DEV}" 2>/dev/null || true
     fi
+    
+    # CI/Pipeline safety: detach ALL loop devices associated with our work directory
+    # This ensures no orphaned loop devices remain after build
+    if [[ -d "${WORK_DIR}" ]]; then
+        for loop in $(losetup -a 2>/dev/null | grep -F "${WORK_DIR}" | cut -d: -f1); do
+            log_warn "Cleaning up orphaned loop device: ${loop}"
+            sudo losetup -d "${loop}" 2>/dev/null || true
+        done
+    fi
+    
+    return $exit_code
 }
 
 trap cleanup EXIT
@@ -52,7 +72,7 @@ trap cleanup EXIT
 check_dependencies() {
     log_info "Checking dependencies..."
     
-    local deps=(losetup mount wget xz git ssh-keygen)
+    local deps=(losetup mount wget xz git ssh-keygen openssl rsync)
     local missing=()
     
     for dep in "${deps[@]}"; do
@@ -142,6 +162,7 @@ mount_image() {
     log_info "Mounting image..."
     
     LOOP_DEV=$(sudo losetup -f --show -P "${WORK_IMAGE}")
+    log_info "Using loop device: ${LOOP_DEV}"
     sleep 2
     
     if [[ ! -b "${LOOP_DEV}p1" ]] || [[ ! -b "${LOOP_DEV}p2" ]]; then
@@ -175,39 +196,27 @@ run_in_chroot() {
 }
 
 clone_repo() {
-    log_info "Cloning repository..."
+    log_info "Copying repository..."
     
-    # Get remote URL from local repo
-    local REMOTE_URL=$(git -C "${SCRIPT_DIR}" remote get-url origin)
-    if [[ -z "${REMOTE_URL}" ]]; then
-        log_error "Could not get remote URL from local repo"
-        exit 1
-    fi
-    log_info "Remote URL: ${REMOTE_URL}"
-    
-    # Get current branch
-    local CURRENT_BRANCH=$(git -C "${SCRIPT_DIR}" rev-parse --abbrev-ref HEAD)
-    log_info "Current branch: ${CURRENT_BRANCH}"
-    
-    # Check if branch exists on remote
-    if git -C "${SCRIPT_DIR}" ls-remote --heads origin "${CURRENT_BRANCH}" | grep -q "${CURRENT_BRANCH}"; then
-        log_info "Branch exists on remote, cloning..."
-    else
-        log_warn "Branch ${CURRENT_BRANCH} not found on remote, using default branch"
-        CURRENT_BRANCH=""
-    fi
-    
-    # Clone into work directory
     local REPO_DIR="${WORK_DIR}/repo"
     rm -rf "${REPO_DIR}"
+    mkdir -p "${REPO_DIR}"
     
-    if [[ -n "${CURRENT_BRANCH}" ]]; then
-        git clone --depth 1 --branch "${CURRENT_BRANCH}" "${REMOTE_URL}" "${REPO_DIR}"
-    else
-        git clone --depth 1 "${REMOTE_URL}" "${REPO_DIR}"
-    fi
+    # Copy the mounted workspace (excluding build artifacts and unnecessary files)
+    rsync -a \
+        --exclude='pical-image-build' \
+        --exclude='.pical-image-build' \
+        --exclude='output' \
+        --exclude='image_build' \
+        --exclude='.git' \
+        --exclude='*.img' \
+        --exclude='*.img.xz' \
+        --exclude='node_modules' \
+        --exclude='dist' \
+        --exclude='bin/' \
+        "${BASE_DIR}/" "${REPO_DIR}/"
     
-    log_info "Repository cloned successfully"
+    log_info "Repository copied successfully"
 }
 
 generate_ssh_key() {
@@ -253,6 +262,29 @@ install_repo_and_ssh() {
     sudo chmod 600 "${ROOTFS}/home/pical/.ssh/id_ed25519"
     sudo chmod 644 "${ROOTFS}/home/pical/.ssh/id_ed25519.pub"
     sudo chown -R 1000:1000 "${ROOTFS}/home/pical/.ssh"
+}
+
+install_udev_rules() {
+    log_info "Installing UDEV rules..."
+    
+    local ROOTFS="${WORK_DIR}/rootfs"
+    
+    # Install UDEV rules for RPi keyboards and disabling mouse/cursor devices
+    sudo tee "${ROOTFS}/etc/udev/rules.d/99-pical-input.rules" > /dev/null << 'EOF'
+# udev rules for PiCal input devices
+
+# RPi 500 Keyboard
+KERNEL=="hidraw*", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="0010", MODE="0660", GROUP="plugdev", TAG+="uaccess", TAG+="udev-acl"
+
+# RPi 500+ Keyboard  
+KERNEL=="hidraw*", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="0011", MODE="0660", GROUP="plugdev", TAG+="uaccess", TAG+="udev-acl"
+
+# Disable HDMI CEC input devices (prevents phantom mouse cursor)
+SUBSYSTEM=="input", ATTRS{name}=="vc4-hdmi-0", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+SUBSYSTEM=="input", ATTRS{name}=="vc4-hdmi-1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+EOF
+
+    log_info "UDEV rules installed"
 }
 
 install_setup_script() {
@@ -422,6 +454,28 @@ configure_system() {
     sudo sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' "${ROOTFS}/etc/ssh/sshd_config"
 }
 
+configure_boot() {
+    log_info "Configuring boot options..."
+    
+    local BOOT_CONFIG="${WORK_DIR}/boot/config.txt"
+    
+    # Enable USB boot with lower power supplies (allows 1.6A to USB ports)
+    if ! grep -q "usb_max_current_enable" "${BOOT_CONFIG}"; then
+        echo "" | sudo tee -a "${BOOT_CONFIG}" > /dev/null
+        echo "# Enable USB boot with non-5A power supplies" | sudo tee -a "${BOOT_CONFIG}" > /dev/null
+        echo "usb_max_current_enable=1" | sudo tee -a "${BOOT_CONFIG}" > /dev/null
+    fi
+    
+    # Add USB storage quirks to cmdline.txt
+    local CMDLINE="${WORK_DIR}/boot/cmdline.txt"
+    if ! grep -q "usb-storage.quirks" "${CMDLINE}"; then
+        log_info "Adding USB storage quirks to cmdline.txt..."
+        sudo sed -i 's/$/ usb-storage.quirks=152d:0583:u/' "${CMDLINE}"
+    fi
+    
+    log_info "Boot options configured"
+}
+
 configure_wifi() {
     log_info "Configuring WiFi..."
     
@@ -504,7 +558,9 @@ main() {
     mount_image
     
     configure_system
+    configure_boot
     configure_wifi
+    install_udev_rules
     install_repo_and_ssh
     install_setup_script
     
@@ -512,7 +568,8 @@ main() {
     cleanup
     trap - EXIT
     
-    local OUTPUT_IMAGE="${SCRIPT_DIR}/pical-$(date +%Y%m%d).img"
+    mkdir -p "${OUTPUT_DIR}"
+    local OUTPUT_IMAGE="${OUTPUT_DIR}/pical-$(date +%Y%m%d).img"
     mv "${WORK_IMAGE}" "${OUTPUT_IMAGE}"
     
     log_info "================================="
