@@ -3,6 +3,7 @@ set -euo pipefail
 
 # PiCal Raspberry Pi Image Builder
 # Downloads and customizes Raspberry Pi OS Lite (Trixie) for Pi 5
+# Uses Debian snapshot archive for reproducible builds
 
 # When running in Docker, use /workspace. Otherwise use script directory.
 if [[ -d "/workspace" ]] && [[ -f "/workspace/.env" ]]; then
@@ -114,7 +115,7 @@ load_env() {
 }
 
 download_image() {
-    log_info "Downloading Raspberry Pi OS Lite..."
+    log_info "Downloading Raspberry Pi OS Lite (Trixie)..."
     
     mkdir -p "${WORK_DIR}"
     cd "${WORK_DIR}"
@@ -305,6 +306,18 @@ echo "=========================================="
 
 # Install dependencies
 echo "[1/5] Installing packages..."
+
+# Pin to Debian snapshot for reproducible builds (avoids 404s from repo churn)
+SNAPSHOT_DATE="20260124T000000Z"
+cat > /etc/apt/sources.list.d/debian-snapshot.list << EOF
+deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/${SNAPSHOT_DATE} trixie main contrib non-free non-free-firmware
+deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/${SNAPSHOT_DATE} trixie-security main contrib non-free non-free-firmware
+EOF
+
+# Disable the default repos temporarily
+mv /etc/apt/sources.list /etc/apt/sources.list.bak || true
+mv /etc/apt/sources.list.d/raspi.list /etc/apt/sources.list.d/raspi.list.bak || true
+
 apt-get update
 apt-get install -y \
     golang \
@@ -314,6 +327,11 @@ apt-get install -y \
     ca-certificates \
     curl \
     gnupg
+
+# Restore original repos for future updates
+mv /etc/apt/sources.list.bak /etc/apt/sources.list || true
+mv /etc/apt/sources.list.d/raspi.list.bak /etc/apt/sources.list.d/raspi.list || true
+rm -f /etc/apt/sources.list.d/debian-snapshot.list
 
 # Install Node.js 25 via NodeSource
 curl -fsSL https://deb.nodesource.com/setup_25.x | bash -
@@ -473,6 +491,12 @@ configure_boot() {
         sudo sed -i 's/$/ usb-storage.quirks=152d:0583:u/' "${CMDLINE}"
     fi
     
+    # Add quiet boot options for faster boot
+    if ! grep -q "quiet" "${CMDLINE}"; then
+        log_info "Adding quiet boot options..."
+        sudo sed -i 's/$/ quiet loglevel=3 systemd.show_status=auto/' "${CMDLINE}"
+    fi
+    
     log_info "Boot options configured"
 }
 
@@ -535,6 +559,45 @@ EOF
     run_in_chroot "systemctl enable wifi-country.service"
 }
 
+optimize_boot() {
+    log_info "Optimizing boot time..."
+    
+    local ROOTFS="${WORK_DIR}/rootfs"
+    
+    # Disable unnecessary services for a kiosk
+    local DISABLE_SERVICES=(
+        "apt-daily.timer"
+        "apt-daily-upgrade.timer"
+        "man-db.timer"
+        "ModemManager.service"
+        "triggerhappy.service"
+        "bluetooth.service"
+        "hciuart.service"
+        "keyboard-setup.service"
+        "raspi-config.service"
+        "rpi-eeprom-update.service"
+    )
+    
+    for service in "${DISABLE_SERVICES[@]}"; do
+        run_in_chroot "systemctl disable ${service} 2>/dev/null || true"
+        run_in_chroot "systemctl mask ${service} 2>/dev/null || true"
+    done
+    
+    # Reduce systemd default timeout (default is 90s, way too long for kiosk)
+    sudo mkdir -p "${ROOTFS}/etc/systemd/system.conf.d"
+    sudo tee "${ROOTFS}/etc/systemd/system.conf.d/timeout.conf" > /dev/null << 'EOF'
+[Manager]
+DefaultTimeoutStartSec=15s
+DefaultTimeoutStopSec=10s
+EOF
+    
+    # Disable wait for network on subsequent boots (kiosk service doesn't need it)
+    # First boot still waits via pical-first-boot.service dependency
+    run_in_chroot "systemctl disable systemd-networkd-wait-online.service 2>/dev/null || true"
+    
+    log_info "Boot optimizations applied"
+}
+
 finalize() {
     log_info "Finalizing..."
     
@@ -563,6 +626,7 @@ main() {
     install_udev_rules
     install_repo_and_ssh
     install_setup_script
+    optimize_boot
     
     finalize
     cleanup
