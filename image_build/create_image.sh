@@ -3,7 +3,6 @@ set -euo pipefail
 
 # PiCal Raspberry Pi Image Builder
 # Downloads and customizes Raspberry Pi OS Lite (Trixie) for Pi 5
-# Uses Debian snapshot archive for reproducible builds
 
 # When running in Docker, use /workspace. Otherwise use script directory.
 if [[ -d "/workspace" ]] && [[ -f "/workspace/.env" ]]; then
@@ -307,18 +306,61 @@ echo "=========================================="
 # Install dependencies
 echo "[1/5] Installing packages..."
 
-# Pin to Debian snapshot for reproducible builds (avoids 404s from repo churn)
-SNAPSHOT_DATE="20260124T000000Z"
-cat > /etc/apt/sources.list.d/debian-snapshot.list << EOF
-deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/${SNAPSHOT_DATE} trixie main contrib non-free non-free-firmware
-deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/${SNAPSHOT_DATE} trixie-security main contrib non-free non-free-firmware
+# Sync system clock before apt - the image's build date may be in the past,
+# causing repo signature verification to fail ("Not live until ...")
+echo "Syncing system clock..."
+if command -v timedatectl &>/dev/null; then
+    timedatectl set-ntp true
+    # Wait for NTP sync (up to 30 seconds)
+    for i in $(seq 1 30); do
+        if timedatectl show -p NTPSynchronized --value 2>/dev/null | grep -q "yes"; then
+            echo "Clock synced: $(date)"
+            break
+        fi
+        sleep 1
+    done
+fi
+# Fallback: if timedatectl didn't work, try chronyd or ntpdate
+if [ "$(date +%Y)" -lt 2026 ]; then
+    echo "Clock still stale, trying fallback sync..."
+    chronyd -q 'server pool.ntp.org iburst' 2>/dev/null || \
+    ntpdate -s pool.ntp.org 2>/dev/null || \
+    echo "WARNING: Could not sync clock, apt may fail"
+fi
+echo "Current date: $(date)"
+
+# Ensure Debian repos are correctly configured (chromium deps like libatk come from Debian, not RPi repo)
+echo "Configuring apt sources..."
+
+# Remove any existing Debian source configs that may be broken
+rm -f /etc/apt/sources.list.d/debian.sources
+sed -i '/deb.debian.org/d' /etc/apt/sources.list 2>/dev/null || true
+sed -i '/debian.org\/debian/d' /etc/apt/sources.list 2>/dev/null || true
+
+cat > /etc/apt/sources.list.d/debian.sources << EOF
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie trixie-updates
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: https://deb.debian.org/debian-security
+Suites: trixie-security
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 EOF
 
-# Disable the default repos temporarily
-mv /etc/apt/sources.list /etc/apt/sources.list.bak || true
-mv /etc/apt/sources.list.d/raspi.list /etc/apt/sources.list.d/raspi.list.bak || true
+echo "Current apt sources:"
+find /etc/apt/sources.list.d/ -type f -exec echo "--- {} ---" \; -exec cat {} \;
+cat /etc/apt/sources.list 2>/dev/null || true
 
+# Full update/upgrade using default repos
 apt-get update
+apt-get dist-upgrade -y
+apt-get install -f -y
+apt-get clean
+
 apt-get install -y \
     golang \
     cage \
@@ -328,14 +370,20 @@ apt-get install -y \
     curl \
     gnupg
 
-# Restore original repos for future updates
-mv /etc/apt/sources.list.bak /etc/apt/sources.list || true
-mv /etc/apt/sources.list.d/raspi.list.bak /etc/apt/sources.list.d/raspi.list || true
-rm -f /etc/apt/sources.list.d/debian-snapshot.list
+apt-get clean
 
-# Install Node.js 25 via NodeSource
-curl -fsSL https://deb.nodesource.com/setup_25.x | bash -
-apt-get install -y nodejs
+# Install Node.js 25 via nvm
+export HOME=/root
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+. "$HOME/.nvm/nvm.sh"
+nvm install 25
+
+# Symlink node/npm to system path so all users can access them
+ln -sf "$(which node)" /usr/local/bin/node
+ln -sf "$(which npm)" /usr/local/bin/npm
+ln -sf "$(which npx)" /usr/local/bin/npx
+
+apt-get clean
 
 # Build the application
 echo "[2/5] Building application..."
@@ -415,8 +463,8 @@ SETUPEOF
     sudo tee "${ROOTFS}/etc/systemd/system/pical-first-boot.service" > /dev/null << 'EOF'
 [Unit]
 Description=PiCal First Boot Setup
-After=network-online.target
-Wants=network-online.target
+After=network-online.target time-sync.target raspi-config.service
+Wants=network-online.target time-sync.target
 ConditionPathExists=!/var/lib/pical-setup-complete
 
 [Service]
@@ -574,7 +622,6 @@ optimize_boot() {
         "bluetooth.service"
         "hciuart.service"
         "keyboard-setup.service"
-        "raspi-config.service"
         "rpi-eeprom-update.service"
     )
     
@@ -639,7 +686,8 @@ main() {
     log_info "================================="
     log_info "Complete: ${OUTPUT_IMAGE}"
     log_info ""
-    log_info "Write with: sudo dd if=${OUTPUT_IMAGE} of=/dev/sdX bs=4M status=progress"
+    log_info "Write with: sudo dd if=${OUTPUT_IMAGE} of=/dev/sdX bs=4M conv=fsync status=progress"
+    log_info "Verify with: sudo cmp -n \$(stat -c%s ${OUTPUT_IMAGE}) ${OUTPUT_IMAGE} /dev/sdX"
 }
 
 main "$@"
