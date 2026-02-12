@@ -415,36 +415,47 @@ EOF
 systemctl daemon-reload
 systemctl enable pical.service
 
-# Configure kiosk mode via autologin
+# Configure kiosk mode via systemd service
 echo "[4/5] Configuring kiosk mode..."
 
-# Create kiosk startup script
-cat > /home/pical/kiosk.sh << 'EOF'
+# Create kiosk startup wrapper that waits for the server
+cat > /home/pical/kiosk.sh << 'KIOSKEOF'
 #!/bin/bash
-# Wait for pical server to be ready
-sleep 5
+# Wait for pical server to be ready before launching the browser
+echo "Waiting for pical server..."
+for i in $(seq 1 60); do
+    if curl -sf http://localhost:8080 > /dev/null 2>&1; then
+        echo "Server ready after ${i}s"
+        break
+    fi
+    sleep 1
+done
 exec cage -s -- chromium --kiosk --noerrdialogs --disable-infobars --no-first-run --enable-features=OverlayScrollbar --start-fullscreen http://localhost:8080
-EOF
+KIOSKEOF
 chmod +x /home/pical/kiosk.sh
 chown pical:pical /home/pical/kiosk.sh
 
-# Create .bash_profile to auto-start kiosk on tty1 login
-cat > /home/pical/.bash_profile << 'EOF'
-if [ "$(tty)" = "/dev/tty1" ]; then
-    exec /home/pical/kiosk.sh
-fi
-EOF
-chown pical:pical /home/pical/.bash_profile
+# Create systemd service for kiosk (PAMName=login grants logind seat/input access)
+cat > /etc/systemd/system/pical-kiosk.service << EOF
+[Unit]
+Description=PiCal Kiosk
+After=pical.service
+Wants=pical.service
 
-# Configure autologin on tty1
-mkdir -p /etc/systemd/system/getty@tty1.service.d
-cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
 [Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin pical --noclear %I \$TERM
+User=pical
+PAMName=login
+Type=simple
+TTYPath=/dev/tty1
+ExecStart=/home/pical/kiosk.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target
 EOF
 
-systemctl enable getty@tty1
+systemctl enable pical-kiosk.service
 
 # Disable this setup service
 echo "[5/5] Finalizing..."
