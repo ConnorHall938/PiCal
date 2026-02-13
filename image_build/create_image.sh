@@ -282,6 +282,10 @@ KERNEL=="hidraw*", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="0011", MODE="0660
 # Disable HDMI CEC input devices (prevents phantom mouse cursor)
 SUBSYSTEM=="input", ATTRS{name}=="vc4-hdmi-0", ENV{LIBINPUT_IGNORE_DEVICE}="1"
 SUBSYSTEM=="input", ATTRS{name}=="vc4-hdmi-1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+
+# Goodix touchscreen: map to DSI output and apply calibration matrix for 90° CCW rotation
+# Calibration matrix for 90° CCW (270° CW): 0 1 0 -1 0 1
+ACTION=="add|change", KERNEL=="event[0-9]*", ATTRS{name}=="*Goodix Capacitive TouchScreen*", ENV{WL_OUTPUT}="DSI-2", ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1"
 EOF
 
     log_info "UDEV rules installed"
@@ -363,7 +367,9 @@ apt-get clean
 
 apt-get install -y \
     golang \
-    cage \
+    labwc \
+    kanshi \
+    wlr-randr \
     chromium \
     fonts-dejavu \
     ca-certificates \
@@ -415,25 +421,68 @@ EOF
 systemctl daemon-reload
 systemctl enable pical.service
 
-# Configure kiosk mode via systemd service
+# Configure kiosk mode via labwc
 echo "[4/5] Configuring kiosk mode..."
 
-# Create kiosk startup wrapper that waits for the server
-cat > /home/pical/kiosk.sh << 'KIOSKEOF'
+# Create labwc config directory
+mkdir -p /home/pical/.config/labwc
+mkdir -p /home/pical/.config/kanshi
+
+# labwc rc.xml - minimal kiosk config (no decorations, no desktop chrome)
+cat > /home/pical/.config/labwc/rc.xml << 'LABWCEOF'
+<?xml version="1.0"?>
+<labwc_config>
+  <core>
+    <decoration>server</decoration>
+  </core>
+  <theme>
+    <titlebar>
+      <height>0</height>
+    </titlebar>
+  </theme>
+  <windowRules>
+    <windowRule identifier="*">
+      <action name="Maximize"/>
+      <skipTaskbar>yes</skipTaskbar>
+    </windowRule>
+  </windowRules>
+</labwc_config>
+LABWCEOF
+
+# labwc autostart - wait for server, then launch chromium
+cat > /home/pical/.config/labwc/autostart << 'LABWCEOF'
 #!/bin/bash
-# Wait for pical server to be ready before launching the browser
-echo "Waiting for pical server..."
+# Start kanshi for output configuration (rotation)
+kanshi &
+
+# Wait for pical server to be ready
 for i in $(seq 1 60); do
     if curl -sf http://localhost:8080 > /dev/null 2>&1; then
-        echo "Server ready after ${i}s"
         break
     fi
     sleep 1
 done
-exec cage -s -- chromium --kiosk --noerrdialogs --disable-infobars --no-first-run --enable-features=OverlayScrollbar --start-fullscreen http://localhost:8080
-KIOSKEOF
-chmod +x /home/pical/kiosk.sh
-chown pical:pical /home/pical/kiosk.sh
+
+# Launch chromium in kiosk mode
+chromium --kiosk --noerrdialogs --disable-infobars --no-first-run \
+    --enable-features=OverlayScrollbar --start-fullscreen \
+    http://localhost:8080 &
+LABWCEOF
+chmod +x /home/pical/.config/labwc/autostart
+
+# kanshi config - set DSI output rotation (90° CCW)
+cat > /home/pical/.config/kanshi/config << 'KANSHIEOF'
+profile {
+    output DSI-2 mode 720x1280@60Hz position 0,0 transform 270
+}
+KANSHIEOF
+
+# labwc environment - disable cursor for kiosk
+cat > /home/pical/.config/labwc/environment << 'LABWCEOF'
+WLR_NO_HARDWARE_CURSORS=1
+LABWCEOF
+
+chown -R pical:pical /home/pical/.config
 
 # Create systemd service for kiosk (PAMName=login grants logind seat/input access)
 cat > /etc/systemd/system/pical-kiosk.service << EOF
@@ -447,7 +496,7 @@ User=pical
 PAMName=login
 Type=simple
 TTYPath=/dev/tty1
-ExecStart=/home/pical/kiosk.sh
+ExecStart=/usr/bin/labwc -s /home/pical/.config/labwc/autostart
 Restart=always
 RestartSec=5
 
@@ -535,6 +584,17 @@ configure_boot() {
     log_info "Configuring boot options..."
     
     local BOOT_CONFIG="${WORK_DIR}/boot/config.txt"
+    
+    # Disable display auto-detect so we can load the DSI overlay with rotation parameter
+    sudo sed -i 's/^display_auto_detect=1/#display_auto_detect=1/' "${BOOT_CONFIG}"
+    
+    # Add the correct ili9881 7-inch overlay with landscape rotation (90° CCW)
+    # This sets panel_orientation at the DRM level; labwc honors it natively
+    if ! grep -q "vc4-kms-dsi-ili9881-7inch" "${BOOT_CONFIG}"; then
+        echo "" | sudo tee -a "${BOOT_CONFIG}" > /dev/null
+        echo "# DSI touchscreen landscape orientation (90° CCW)" | sudo tee -a "${BOOT_CONFIG}" > /dev/null
+        echo "dtoverlay=vc4-kms-dsi-ili9881-7inch,rotation=270" | sudo tee -a "${BOOT_CONFIG}" > /dev/null
+    fi
     
     # Enable USB boot with lower power supplies (allows 1.6A to USB ports)
     if ! grep -q "usb_max_current_enable" "${BOOT_CONFIG}"; then

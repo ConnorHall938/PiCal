@@ -8,6 +8,7 @@ CONTAINER_NAME := pical-build
 REPO_DIR := $(shell pwd)/..
 OUTPUT_DIR := $(REPO_DIR)/output
 CACHE_DIR := $(REPO_DIR)/.pical-image-build
+OTHER_CACHE := $(REPO_DIR)/pical-image-build
 
 .PHONY: help docker-build image clean clean-all
 
@@ -76,17 +77,20 @@ check-env:
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf $(OUTPUT_DIR)
-	rm -f $(CACHE_DIR)/pical-image.img
+	rm -rf $(CACHE_DIR)
+	rm -rf $(OTHER_CACHE_DIR)
 	@echo "Done. Cached base images preserved in $(CACHE_DIR)"
 
 # Clean everything including Docker image and cached downloads
 clean-all: clean
 	@echo "Removing cached downloads..."
+	rm -rf $(OUTPUT_DIR)
 	rm -rf $(CACHE_DIR)
+	rm -rf $(OTHER_CACHE_DIR)
 	@echo "Removing Docker image..."
 	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) 2>/dev/null || true
 	@echo "Done."
 
 # CI target - builds both docker image and pi image
-ci: docker-build image
+ci: clean-all docker-build image
 	@echo "CI build complete!"
