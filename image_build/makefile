@@ -46,6 +46,7 @@ image: check-env
 	@mkdir -p $(CACHE_DIR)
 	docker run --rm \
 		--privileged \
+		-it \
 		--name $(CONTAINER_NAME) \
 		-v $(REPO_DIR):/workspace:rw \
 		-v $(CACHE_DIR):/workspace/pical-image-build:rw \

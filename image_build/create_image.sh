@@ -72,7 +72,7 @@ trap cleanup EXIT
 check_dependencies() {
     log_info "Checking dependencies..."
     
-    local deps=(losetup mount wget xz git ssh-keygen openssl rsync)
+    local deps=(losetup mount wget xz git ssh-keygen openssl)
     local missing=()
     
     for dep in "${deps[@]}"; do
@@ -104,7 +104,7 @@ load_env() {
     source "${ENV_FILE}"
     set +a
     
-    local required_vars=(WIFI_SSID WIFI_PASSWORD WIFI_COUNTRY ROOT_PASSWORD PICAL_PASSWORD)
+    local required_vars=(WIFI_SSID WIFI_PASSWORD WIFI_COUNTRY ROOT_PASSWORD PICAL_PASSWORD PICAL_PORT PICAL_REPO_SSH_URL DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD DB_SSLMODE)
     for var in "${required_vars[@]}"; do
         if [[ -z "${!var:-}" ]]; then
             log_error "Missing required variable: ${var}"
@@ -195,73 +195,79 @@ run_in_chroot() {
     sudo chroot "${WORK_DIR}/rootfs" /bin/bash -c "$1"
 }
 
-clone_repo() {
-    log_info "Copying repository..."
-    
-    local REPO_DIR="${WORK_DIR}/repo"
-    rm -rf "${REPO_DIR}"
-    mkdir -p "${REPO_DIR}"
-    
-    # Copy the mounted workspace (excluding build artifacts and unnecessary files)
-    rsync -a \
-        --exclude='pical-image-build' \
-        --exclude='.pical-image-build' \
-        --exclude='output' \
-        --exclude='image_build' \
-        --exclude='.git' \
-        --exclude='*.img' \
-        --exclude='*.img.xz' \
-        --exclude='node_modules' \
-        --exclude='dist' \
-        --exclude='bin/' \
-        "${BASE_DIR}/" "${REPO_DIR}/"
-    
-    log_info "Repository copied successfully"
-}
-
 generate_ssh_key() {
-    log_info "Generating SSH keypair for pical user..."
-    
-    local SSH_DIR="${WORK_DIR}/ssh_key"
-    rm -rf "${SSH_DIR}"
-    mkdir -p "${SSH_DIR}"
-    
-    ssh-keygen -t ed25519 -f "${SSH_DIR}/id_ed25519" -N "" -C "pical@pical"
-    
-    SSH_PRIVATE_KEY="${SSH_DIR}/id_ed25519"
-    SSH_PUBLIC_KEY="${SSH_DIR}/id_ed25519.pub"
-    
-    echo ""
-    echo "========================================"
-    echo "Add this public key to GitHub:"
-    echo "========================================"
-    cat "${SSH_PUBLIC_KEY}"
-    echo "========================================"
-    echo ""
-}
-
-install_repo_and_ssh() {
-    log_info "Installing repo and SSH key into image..."
+    log_info "Generating SSH keypair inside image..."
     
     local ROOTFS="${WORK_DIR}/rootfs"
     
-    # Copy repo to /opt/pical
-    sudo mkdir -p "${ROOTFS}/opt/pical"
-    sudo cp -r "${WORK_DIR}/repo/." "${ROOTFS}/opt/pical/"
+    run_in_chroot "mkdir -p /home/pical/.ssh && chmod 700 /home/pical/.ssh"
+    run_in_chroot "ssh-keygen -t ed25519 -f /home/pical/.ssh/id_ed25519 -N '' -C 'pical@pical'"
+    run_in_chroot "chown -R 1000:1000 /home/pical/.ssh"
     
-    # Copy .env file
-    sudo cp "${ENV_FILE}" "${ROOTFS}/opt/pical/.env"
+    local PUB_KEY
+    PUB_KEY=$(sudo cat "${ROOTFS}/home/pical/.ssh/id_ed25519.pub")
     
-    sudo chown -R 1000:1000 "${ROOTFS}/opt/pical"
+    echo ""
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN} Add this public key to your Git host:${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo "${PUB_KEY}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    read -rp "Press Enter once you've added the key to continue..."
+    echo ""
+}
+
+clone_repo() {
+    log_info "Cloning repository into image..."
     
-    # Install SSH key for pical user (for GitHub access)
-    sudo mkdir -p "${ROOTFS}/home/pical/.ssh"
-    sudo cp "${SSH_PRIVATE_KEY}" "${ROOTFS}/home/pical/.ssh/id_ed25519"
-    sudo cp "${SSH_PUBLIC_KEY}" "${ROOTFS}/home/pical/.ssh/id_ed25519.pub"
-    sudo chmod 700 "${ROOTFS}/home/pical/.ssh"
-    sudo chmod 600 "${ROOTFS}/home/pical/.ssh/id_ed25519"
-    sudo chmod 644 "${ROOTFS}/home/pical/.ssh/id_ed25519.pub"
-    sudo chown -R 1000:1000 "${ROOTFS}/home/pical/.ssh"
+    local ROOTFS="${WORK_DIR}/rootfs"
+    
+    # Configure SSH for the git host so clone (and future pulls) work without prompts
+    local GIT_HOST
+    GIT_HOST=$(echo "${PICAL_REPO_SSH_URL}" | sed -n 's/.*@\([^:]*\):.*/\1/p')
+    
+    if [[ -n "${GIT_HOST}" ]]; then
+        sudo tee "${ROOTFS}/home/pical/.ssh/config" > /dev/null << EOF
+Host ${GIT_HOST}
+    IdentityFile ~/.ssh/id_ed25519
+    StrictHostKeyChecking accept-new
+EOF
+        sudo chmod 600 "${ROOTFS}/home/pical/.ssh/config"
+        sudo chown 1000:1000 "${ROOTFS}/home/pical/.ssh/config"
+    fi
+    
+    # Ensure git is available in the image
+    run_in_chroot "command -v git &>/dev/null || (apt-get update && apt-get install -y git)"
+    
+    # Clone using the in-image key
+    run_in_chroot "GIT_SSH_COMMAND='ssh -i /home/pical/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new' git clone ${PICAL_REPO_SSH_URL} /opt/pical"
+    run_in_chroot "chown -R 1000:1000 /opt/pical"
+    
+    log_info "Repository cloned successfully"
+}
+
+write_runtime_env() {
+    log_info "Writing runtime environment to image..."
+    
+    local ROOTFS="${WORK_DIR}/rootfs"
+    
+    # Only runtime variables go on the Pi — build secrets (passwords, wifi creds,
+    # repo URL) stay on the build host.
+    sudo tee "${ROOTFS}/opt/pical/.env" > /dev/null << EOF
+# PiCal runtime configuration (generated by image builder)
+PICAL_PORT=${PICAL_PORT}
+
+# Database
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT}
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
+DB_SSLMODE=${DB_SSLMODE}
+EOF
+    
+    sudo chown 1000:1000 "${ROOTFS}/opt/pical/.env"
 }
 
 install_udev_rules() {
@@ -269,7 +275,6 @@ install_udev_rules() {
     
     local ROOTFS="${WORK_DIR}/rootfs"
     
-    # Install UDEV rules for RPi keyboards and disabling mouse/cursor devices
     sudo tee "${ROOTFS}/etc/udev/rules.d/99-pical-input.rules" > /dev/null << 'EOF'
 # udev rules for PiCal input devices
 
@@ -306,6 +311,11 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 echo "=========================================="
 echo "PiCal First Boot Setup - $(date)"
 echo "=========================================="
+
+# Load runtime config
+set -a
+source /opt/pical/.env
+set +a
 
 # Install dependencies
 echo "[1/5] Installing packages..."
@@ -394,6 +404,7 @@ apt-get clean
 # Build the application
 echo "[2/5] Building application..."
 cd /opt/pical
+git config --global --add safe.directory /opt/pical
 HOME=/root make build
 chmod +x /opt/pical/bin/server
 chown -R pical:pical /opt/pical
@@ -449,24 +460,34 @@ cat > /home/pical/.config/labwc/rc.xml << 'LABWCEOF'
 </labwc_config>
 LABWCEOF
 
-# labwc autostart - wait for server, then launch chromium
+# labwc autostart - poll for the host to be ready, then launch chromium
 cat > /home/pical/.config/labwc/autostart << 'LABWCEOF'
 #!/bin/bash
-# Start kanshi for output configuration (rotation)
-kanshi &
 
-# Wait for pical server to be ready
-for i in $(seq 1 60); do
-    if curl -sf http://localhost:8080 > /dev/null 2>&1; then
+# Source runtime config so PICAL_PORT is always current
+set -a
+source /opt/pical/.env
+set +a
+
+PICAL_KIOSK_URL="http://localhost:${PICAL_PORT}"
+
+# Poll until the host is actually responding (up to 120s)
+echo "Waiting for ${PICAL_KIOSK_URL} ..."
+for i in $(seq 1 120); do
+    if curl -sf "${PICAL_KIOSK_URL}" > /dev/null 2>&1; then
+        echo "Host ready after ${i}s"
         break
     fi
     sleep 1
 done
 
+# Start kanshi for output configuration (rotation)
+kanshi &
+
 # Launch chromium in kiosk mode
 chromium --kiosk --noerrdialogs --disable-infobars --no-first-run \
     --enable-features=OverlayScrollbar --start-fullscreen \
-    http://localhost:8080 &
+    "${PICAL_KIOSK_URL}" &
 LABWCEOF
 chmod +x /home/pical/.config/labwc/autostart
 
@@ -485,11 +506,11 @@ LABWCEOF
 chown -R pical:pical /home/pical/.config
 
 # Create systemd service for kiosk (PAMName=login grants logind seat/input access)
+# No hard dependency on pical.service — the autostart script polls the host directly
 cat > /etc/systemd/system/pical-kiosk.service << EOF
 [Unit]
 Description=PiCal Kiosk
-After=pical.service
-Wants=pical.service
+After=network.target
 
 [Service]
 User=pical
@@ -499,6 +520,7 @@ TTYPath=/dev/tty1
 ExecStart=/usr/bin/labwc -s /home/pical/.config/labwc/autostart
 Restart=always
 RestartSec=5
+Environment=HOME=/home/pical
 
 [Install]
 WantedBy=graphical.target
@@ -733,16 +755,17 @@ main() {
     
     check_dependencies
     load_env
-    clone_repo
-    generate_ssh_key
     download_image
     mount_image
     
     configure_system
+    generate_ssh_key
+    clone_repo
+    write_runtime_env
+    
     configure_boot
     configure_wifi
     install_udev_rules
-    install_repo_and_ssh
     install_setup_script
     optimize_boot
     
