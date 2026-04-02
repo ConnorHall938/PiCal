@@ -4,12 +4,7 @@ set -euo pipefail
 # PiCal Raspberry Pi Image Builder
 # Downloads and customizes Raspberry Pi OS Lite (Trixie) for Pi 5
 
-# When running in Docker, use /workspace. Otherwise use script directory.
-if [[ -d "/workspace" ]] && [[ -f "/workspace/.env" ]]; then
-    BASE_DIR="/workspace"
-else
-    BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-fi
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 WORK_DIR="${BASE_DIR}/pical-image-build"
 ENV_FILE="${BASE_DIR}/.env"

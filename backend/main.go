@@ -55,6 +55,7 @@ func main() {
 		log.Fatalf("Failed to create server! %v", err)
 	}
 
+	pical_port _ := strconv.Atoi(getenv("PICAL_PORT", "8080"))
 	httpSrv := &http.Server{
 		Addr:    ":8080",
 		Handler: s.Mux,
