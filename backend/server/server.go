@@ -72,10 +72,6 @@ func (s *Server) eventByIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
-	if err := s.DB.PingContext(r.Context()); err != nil {
-		http.Error(w, "db not ready", http.StatusServiceUnavailable)
-		return
-	}
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
 }

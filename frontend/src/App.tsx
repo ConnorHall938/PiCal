@@ -1,10 +1,30 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 
 type ViewMode = "day" | "week" | "month";
 
+function useReconnect(intervalMs = 5000) {
+  const wasOffline = useRef(false)
+  useEffect(() => {
+    const id = setInterval(async () => {
+      try {
+        const res = await fetch('/health')
+        if (res.ok) {
+          if (wasOffline.current) window.location.reload(); wasOffline.current = false
+        } else {
+          wasOffline.current = true
+        }
+      } catch {
+        wasOffline.current = true
+      }
+    }, intervalMs)
+    return () => clearInterval(id)
+  }, [intervalMs])
+}
+
 function App() {
-const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  useReconnect();
 
   return (
     <div className="AppShell">
