@@ -1,0 +1,198 @@
+paths:
+  /occurrences:
+    get:
+      summary: List occurrences
+      operationId: listOccurrences
+      tags: [Occurrences]
+      parameters:
+        - name: limit
+          in: query
+          description: Number of occurrences per page (1-200)
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+        - name: offset
+          in: query
+          description: Pagination offset (0-1,000,000)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            maximum: 1000000
+      responses:
+        "200":
+          description: Paged list of occurrences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedOccurrences"
+        "500":
+          description: Internal server error
+
+    post:
+      summary: Create occurrence
+      operationId: createOccurrence
+      tags: [Occurrences]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccurrenceInput"
+            examples:
+              simple:
+                summary: Single occurrence
+                value:
+                  eventId: "550e8400-e29b-41d4-a716-446655440000"
+                  startTime: "2026-04-10T09:00:00Z"
+                  endTime: "2026-04-10T10:00:00Z"
+      responses:
+        "201":
+          description: Occurrence created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Occurrence"
+        "400":
+          description: Validation error or invalid JSON
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error
+
+  /occurrences/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Occurrence UUID
+        schema:
+          type: string
+          format: uuid
+          example: "660e8400-e29b-41d4-a716-446655440000"
+
+    get:
+      summary: Get occurrence by ID
+      operationId: getOccurrence
+      tags: [Occurrences]
+      responses:
+        "200":
+          description: Occurrence found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Occurrence"
+        "404":
+          description: Occurrence not found
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error
+
+    delete:
+      summary: Delete occurrence
+      operationId: deleteOccurrence
+      tags: [Occurrences]
+      responses:
+        "204":
+          description: Occurrence deleted
+        "404":
+          description: Occurrence not found
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error
+
+components:
+  schemas:
+    OccurrenceKind:
+      type: integer
+      description: "0 = normal, 1 = moved, 2 = cancelled"
+      enum: [0, 1, 2]
+      example: 0
+
+    Occurrence:
+      type: object
+      required: [occurrenceId, eventId, startTime, moved]
+      properties:
+        occurrenceId:
+          type: string
+          format: uuid
+          description: Auto-generated occurrence identifier
+          readOnly: true
+          example: "660e8400-e29b-41d4-a716-446655440000"
+        eventId:
+          type: string
+          format: uuid
+          description: Parent event identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        startTime:
+          type: string
+          format: date-time
+          example: "2026-04-10T09:00:00Z"
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-04-10T10:00:00Z"
+        moved:
+          $ref: "#/components/schemas/OccurrenceKind"
+        newStartTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: Rescheduled start time (when moved)
+          example: "2026-04-10T11:00:00Z"
+        newEndTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: Rescheduled end time (when moved)
+          example: "2026-04-10T12:00:00Z"
+
+    OccurrenceInput:
+      type: object
+      required: [eventId, startTime]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        startTime:
+          type: string
+          format: date-time
+          example: "2026-04-10T09:00:00Z"
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-04-10T10:00:00Z"
+
+    PagedOccurrences:
+      type: object
+      required: [items, limit, offset, count, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Occurrence"
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+        count:
+          type: integer
+          example: 5
+        total:
+          type: integer
+          example: 30

@@ -1,4 +1,4 @@
-package server
+package utils
 
 import (
 	"encoding/json"
@@ -6,13 +6,21 @@ import (
 	"strconv"
 )
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
+type PagedResponse[T any] struct {
+	Items  []T `json:"items"`
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+	Count  int `json:"count"`
+	Total  int `json:"total"`
+}
+
+func WriteJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func parseIntQuery(r *http.Request, key string, def, min, max int) int {
+func ParseIntQuery(r *http.Request, key string, def, min, max int) int {
 	v := r.URL.Query().Get(key)
 	if v == "" {
 		return def

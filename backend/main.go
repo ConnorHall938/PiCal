@@ -35,11 +35,11 @@ func main() {
 	}
 	log.Printf("Serving UI from: %s", dist)
 
-	apiSpec, err := findAPISpec()
+	apiDir, err := findAPIDir()
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Serving API spec from: %s", apiSpec)
+	log.Printf("Serving API spec from: %s", apiDir)
 
 	port, _ := strconv.Atoi(getenv("DB_PORT", "5432"))
 
@@ -56,7 +56,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	s, err := server.New(rootCtx, conn, dist, apiSpec)
+	s, err := server.New(rootCtx, conn, dist, apiDir)
 	if err != nil {
 		log.Fatalf("Failed to create server! %v", err)
 	}
@@ -100,18 +100,18 @@ func getenv(k, def string) string {
 
 // Finding the frontend directory
 
-func findAPISpec() (string, error) {
-	if v := os.Getenv("API_SPEC"); v != "" {
-		if fileExists(v) {
+func findAPIDir() (string, error) {
+	if v := os.Getenv("API_DIR"); v != "" {
+		if fileExists(filepath.Join(v, "openapi.yaml")) {
 			return v, nil
 		}
-		return "", fmt.Errorf("API_SPEC is set but file not found: %q", v)
+		return "", fmt.Errorf("API_DIR is set but openapi.yaml not found in %q", v)
 	}
 
 	if exe, err := os.Executable(); err == nil {
 		root := filepath.Dir(filepath.Dir(exe))
-		p := filepath.Join(root, "api", "openapi.yaml")
-		if fileExists(p) {
+		p := filepath.Join(root, "api")
+		if fileExists(filepath.Join(p, "openapi.yaml")) {
 			return p, nil
 		}
 	}
@@ -120,14 +120,14 @@ func findAPISpec() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	p, err := findUpwards(cwd, filepath.Join("api", "openapi.yaml"))
+	spec, err := findUpwards(cwd, filepath.Join("api", "openapi.yaml"))
 	if err == nil {
-		return p, nil
+		return filepath.Dir(spec), nil
 	}
 
 	return "", errors.New(
 		"could not locate api/openapi.yaml.\n" +
-			"Or set API_SPEC=/absolute/path/to/openapi.yaml",
+			"Or set API_DIR=/absolute/path/to/api",
 	)
 }
 

@@ -4,20 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
-	"strings"
 	"time"
+
+	"pical/server/endpoints"
 )
 
-func New(ctx context.Context, db *sql.DB, frontendDistDir, apiSpecPath string) (*Server, error) {
+func New(ctx context.Context, db *sql.DB, frontendDistDir, apiDir string) (*Server, error) {
 	s := &Server{
-		DB:          db,
-		Mux:         http.NewServeMux(),
-		Fs:          http.FileServer(http.Dir(frontendDistDir)),
-		APISpecPath: apiSpecPath,
+		DB:     db,
+		Mux:    http.NewServeMux(),
+		Fs:     http.FileServer(http.Dir(frontendDistDir)),
+		APIDir: apiDir,
 	}
 
-	err := s.initDatabase(ctx)
-	if err != nil {
+	if err := s.initDatabase(ctx); err != nil {
 		return nil, err
 	}
 
@@ -26,52 +26,15 @@ func New(ctx context.Context, db *sql.DB, frontendDistDir, apiSpecPath string) (
 }
 
 func (s *Server) routes() {
-	s.Mux.Handle("/",
-		s.Fs,
-	)
-
+	s.Mux.Handle("/", s.Fs)
 	s.Mux.HandleFunc("/health", s.health)
 	s.Mux.HandleFunc("/docs", s.serveDocs)
-	s.Mux.HandleFunc("/openapi.yaml", s.serveOpenAPISpec)
+	s.Mux.Handle("/api/", http.StripPrefix("/api/", http.FileServer(http.Dir(s.APIDir))))
 
-	dbTimeoutMiddleware := TimeoutMiddleware(10 * time.Second)
+	dbTimeout := TimeoutMiddleware(10 * time.Second)
 
-	s.Mux.Handle("/events", dbTimeoutMiddleware(http.HandlerFunc(s.eventHandler)))
-	s.Mux.Handle("/events/", dbTimeoutMiddleware(http.HandlerFunc(s.eventByIDHandler)))
-}
-
-func (s *Server) eventHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		s.getEvents(w, r)
-	case http.MethodPost:
-		s.createEvent(w, r)
-	default:
-		w.Header().Set("Allow", "GET, POST")
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func (s *Server) eventByIDHandler(w http.ResponseWriter, r *http.Request) {
-	// Path is like "/events/{id}" (because this handler is registered at "/events/")
-	id := strings.TrimPrefix(r.URL.Path, "/events/")
-	id = strings.Trim(id, "/") // defensive: "/events/{id}/"
-
-	// Reject "/events/" (no id) and deeper paths like "/events/a/b"
-	if id == "" || strings.Contains(id, "/") {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		s.getEvent(w, r, id)
-	case http.MethodDelete:
-		s.deleteEvent(w, r, id)
-	default:
-		w.Header().Set("Allow", "GET, DELETE")
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
+	(&endpoints.EventsDeps{DB: s.DB}).Register(s.Mux, dbTimeout)
+	(&endpoints.OccurrenceDeps{DB: s.DB}).Register(s.Mux, dbTimeout)
 }
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {

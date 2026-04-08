@@ -14,9 +14,10 @@ erDiagram
   }
 
   OCCURRENCE {
-    uuid event_id PK,FK
-    timestamptz startTime PK
-    timestamptz endTime PK
+    uuid occurrence_id PK
+    uuid event_id FK
+    timestamptz startTime
+    timestamptz endTime
     boolean is_override
     timestamptz newStartTime
     timestamptz newEndTime
