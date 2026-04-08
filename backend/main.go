@@ -35,6 +35,12 @@ func main() {
 	}
 	log.Printf("Serving UI from: %s", dist)
 
+	apiSpec, err := findAPISpec()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Serving API spec from: %s", apiSpec)
+
 	port, _ := strconv.Atoi(getenv("DB_PORT", "5432"))
 
 	conn, err := database.Open(database.Config{
@@ -50,7 +56,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	s, err := server.New(rootCtx, conn, dist)
+	s, err := server.New(rootCtx, conn, dist, apiSpec)
 	if err != nil {
 		log.Fatalf("Failed to create server! %v", err)
 	}
@@ -93,6 +99,37 @@ func getenv(k, def string) string {
 }
 
 // Finding the frontend directory
+
+func findAPISpec() (string, error) {
+	if v := os.Getenv("API_SPEC"); v != "" {
+		if fileExists(v) {
+			return v, nil
+		}
+		return "", fmt.Errorf("API_SPEC is set but file not found: %q", v)
+	}
+
+	if exe, err := os.Executable(); err == nil {
+		root := filepath.Dir(filepath.Dir(exe))
+		p := filepath.Join(root, "api", "openapi.yaml")
+		if fileExists(p) {
+			return p, nil
+		}
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	p, err := findUpwards(cwd, filepath.Join("api", "openapi.yaml"))
+	if err == nil {
+		return p, nil
+	}
+
+	return "", errors.New(
+		"could not locate api/openapi.yaml.\n" +
+			"Or set API_SPEC=/absolute/path/to/openapi.yaml",
+	)
+}
 
 func findFrontendDist() (string, error) {
 	// 0) Explicit override (handy for weird deployments)

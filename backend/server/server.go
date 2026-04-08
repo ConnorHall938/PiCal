@@ -8,11 +8,12 @@ import (
 	"time"
 )
 
-func New(ctx context.Context, db *sql.DB, frontendDistDir string) (*Server, error) {
+func New(ctx context.Context, db *sql.DB, frontendDistDir, apiSpecPath string) (*Server, error) {
 	s := &Server{
-		DB:  db,
-		Mux: http.NewServeMux(),
-		Fs:  http.FileServer(http.Dir(frontendDistDir)),
+		DB:          db,
+		Mux:         http.NewServeMux(),
+		Fs:          http.FileServer(http.Dir(frontendDistDir)),
+		APISpecPath: apiSpecPath,
 	}
 
 	err := s.initDatabase(ctx)
@@ -30,6 +31,8 @@ func (s *Server) routes() {
 	)
 
 	s.Mux.HandleFunc("/health", s.health)
+	s.Mux.HandleFunc("/docs", s.serveDocs)
+	s.Mux.HandleFunc("/openapi.yaml", s.serveOpenAPISpec)
 
 	dbTimeoutMiddleware := TimeoutMiddleware(10 * time.Second)
 

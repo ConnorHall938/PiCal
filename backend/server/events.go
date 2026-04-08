@@ -74,5 +74,5 @@ func (s *Server) getEvent(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, out)
+	writeJSON(w, http.StatusOK, out)
 }

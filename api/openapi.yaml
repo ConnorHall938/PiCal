@@ -1,0 +1,241 @@
+openapi: "3.1.0"
+
+info:
+  title: PiCal API
+  version: "1.0.0"
+  description: Calendar event management API for PiCal
+
+servers:
+  - url: /
+    description: Local server
+
+tags:
+  - name: Events
+    description: Calendar event CRUD operations
+  - name: Health
+    description: Server health
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: health
+      tags: [Health]
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
+
+  /events:
+    get:
+      summary: List events
+      operationId: listEvents
+      tags: [Events]
+      parameters:
+        - name: limit
+          in: query
+          description: Number of events per page (1-200)
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+        - name: offset
+          in: query
+          description: Pagination offset (0-1,000,000)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            maximum: 1000000
+      responses:
+        "200":
+          description: Paged list of events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedEvents"
+        "500":
+          description: Internal server error
+
+    post:
+      summary: Create event
+      operationId: createEvent
+      tags: [Events]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventInput"
+            examples:
+              simple:
+                summary: One-off event
+                value:
+                  personName: Alice
+                  title: Team standup
+                  timezone: America/New_York
+                  allDay: false
+              recurring:
+                summary: Weekly recurring event
+                value:
+                  personName: Bob
+                  title: Weekly review
+                  timezone: Europe/London
+                  allDay: false
+                  rrule: "FREQ=WEEKLY;BYDAY=MO"
+      responses:
+        "201":
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Validation error or invalid JSON
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error
+
+  /events/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Event UUID
+        schema:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    get:
+      summary: Get event by ID
+      operationId: getEvent
+      tags: [Events]
+      responses:
+        "200":
+          description: Event found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "404":
+          description: Event not found
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error
+
+    delete:
+      summary: Delete event
+      operationId: deleteEvent
+      tags: [Events]
+      responses:
+        "204":
+          description: Event deleted
+        "404":
+          description: Event not found
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal server error
+
+components:
+  schemas:
+    Event:
+      type: object
+      required: [eventId, personName, title, timezone, allDay]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Auto-generated event identifier
+          readOnly: true
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        personName:
+          type: string
+          description: Name of the person this event belongs to
+          example: Alice
+        title:
+          type: string
+          description: Event title
+          example: Team standup
+        notes:
+          type: string
+          nullable: true
+          description: Optional event notes
+          example: Bring laptop
+        timezone:
+          type: string
+          description: IANA timezone identifier
+          example: America/New_York
+        allDay:
+          type: boolean
+          description: Whether this is an all-day event
+          default: false
+        rrule:
+          type: string
+          nullable: true
+          description: RFC 5545 recurrence rule
+          example: "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+
+    EventInput:
+      type: object
+      required: [personName, title, timezone]
+      properties:
+        personName:
+          type: string
+          example: Alice
+        title:
+          type: string
+          example: Team standup
+        notes:
+          type: string
+          nullable: true
+          example: Bring laptop
+        timezone:
+          type: string
+          example: America/New_York
+        allDay:
+          type: boolean
+          default: false
+        rrule:
+          type: string
+          nullable: true
+          example: "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+
+    PagedEvents:
+      type: object
+      required: [items, limit, offset, count, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+        limit:
+          type: integer
+          description: Page size requested
+          example: 50
+        offset:
+          type: integer
+          description: Pagination offset
+          example: 0
+        count:
+          type: integer
+          description: Number of items in this page
+          example: 12
+        total:
+          type: integer
+          description: Total number of events in the database
+          example: 42

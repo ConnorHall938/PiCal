@@ -6,9 +6,10 @@ import (
 )
 
 type Server struct {
-	DB  *sql.DB
-	Mux *http.ServeMux
-	Fs  http.Handler
+	DB          *sql.DB
+	Mux         *http.ServeMux
+	Fs          http.Handler
+	APISpecPath string
 }
 
 type PagedResponse[T any] struct {
