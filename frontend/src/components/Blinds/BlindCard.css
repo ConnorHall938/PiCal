@@ -1,0 +1,86 @@
+.BlindCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.BlindCard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.BlindCard__name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.BlindCard__status {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.BlindCard__status--open {
+  background: color-mix(in srgb, var(--color-success) 20%, transparent);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+}
+
+.BlindCard__status--closed {
+  background: color-mix(in srgb, var(--color-text-muted) 15%, transparent);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.BlindCard__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.BlindCard__btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+
+.BlindCard__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.BlindCard__btn--open {
+  background: var(--color-success);
+  color: #1a2a1a;
+}
+
+.BlindCard__btn--open:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+.BlindCard__btn--close {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.BlindCard__btn--close:not(:disabled):hover {
+  background: var(--color-border);
+}
+
+.BlindCard__error {
+  font-size: 0.8rem;
+  color: var(--color-danger);
+}

@@ -1,0 +1,115 @@
+paths:
+  /blinds:
+    get:
+      summary: List blinds
+      operationId: listBlinds
+      tags: [Blinds]
+      responses:
+        "200":
+          description: List of all blinds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Blind"
+
+  /blinds/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Blind identifier
+        schema:
+          type: string
+          example: "blind-1"
+    get:
+      summary: Get blind by ID
+      operationId: getBlind
+      tags: [Blinds]
+      responses:
+        "200":
+          description: Blind found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blind"
+        "404":
+          description: Blind not found
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /blinds/{id}/open:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Blind identifier
+        schema:
+          type: string
+          example: "blind-1"
+    post:
+      summary: Open a blind
+      operationId: openBlind
+      tags: [Blinds]
+      responses:
+        "200":
+          description: Blind opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blind"
+        "404":
+          description: Blind not found
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /blinds/{id}/close:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Blind identifier
+        schema:
+          type: string
+          example: "blind-1"
+    post:
+      summary: Close a blind
+      operationId: closeBlind
+      tags: [Blinds]
+      responses:
+        "200":
+          description: Blind closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blind"
+        "404":
+          description: Blind not found
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  schemas:
+    Blind:
+      type: object
+      required: [id, name, isOpen]
+      properties:
+        id:
+          type: string
+          description: Blind identifier
+          example: "blind-1"
+        name:
+          type: string
+          description: Human-readable blind name
+          example: "Living Room"
+        isOpen:
+          type: boolean
+          description: Whether the blind is currently open
+          example: false

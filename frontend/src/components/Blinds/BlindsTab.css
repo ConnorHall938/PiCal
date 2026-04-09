@@ -1,0 +1,18 @@
+.BlindsTab {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.BlindsTab__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.BlindsTab__empty {
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: 60px;
+  font-size: 1.1rem;
+}

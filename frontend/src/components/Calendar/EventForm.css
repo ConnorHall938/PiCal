@@ -1,0 +1,78 @@
+.EventForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.EventForm__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.EventForm__checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--touch-target);
+}
+
+.EventForm__checkbox-row input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  min-height: unset;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--color-accent);
+}
+
+.EventForm__checkbox-row label {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.EventForm__error {
+  font-size: 0.85rem;
+  color: var(--color-danger);
+}
+
+.EventForm__actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.EventForm__submit {
+  flex: 1;
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  padding: 10px;
+  min-height: var(--touch-target);
+  transition: background 0.15s;
+}
+
+.EventForm__submit:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 30%, var(--color-surface));
+}
+
+.EventForm__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.EventForm__cancel {
+  padding: 10px 16px;
+  min-height: var(--touch-target);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  color: var(--color-text-muted);
+}
+
+.EventForm__cancel:hover {
+  color: var(--color-text);
+  background: var(--color-surface-alt);
+}

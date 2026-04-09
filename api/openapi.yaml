@@ -16,6 +16,8 @@ tags:
     description: Event occurrence management
   - name: Health
     description: Server health
+  - name: Blinds
+    description: Blind open/close control
 
 paths:
   /health:
@@ -43,3 +45,15 @@ paths:
 
   /occurrences/{id}:
     $ref: "./occurrences.yaml#/paths/~1occurrences~1{id}"
+
+  /blinds:
+    $ref: "./blinds.yaml#/paths/~1blinds"
+
+  /blinds/{id}:
+    $ref: "./blinds.yaml#/paths/~1blinds~1{id}"
+
+  /blinds/{id}/open:
+    $ref: "./blinds.yaml#/paths/~1blinds~1{id}~1open"
+
+  /blinds/{id}/close:
+    $ref: "./blinds.yaml#/paths/~1blinds~1{id}~1close"

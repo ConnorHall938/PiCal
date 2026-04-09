@@ -1,12 +1,82 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --color-bg: #1a1a2e;
+  --color-surface: #16213e;
+  --color-surface-alt: #0f3460;
+  --color-border: #2a2a4a;
+  --color-text: #e0e0f0;
+  --color-text-muted: #8888aa;
+  --color-accent: #4fc3f7;
+  --color-accent-dim: #1a4a6a;
+  --color-danger: #e57373;
+  --color-success: #81c784;
+  --color-warning: #ffb74d;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #848200;
+  --tab-bar-height: 56px;
+  --panel-width: 320px;
+  --border-radius: 8px;
+  --touch-target: 44px;
 
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+
+  color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  min-height: var(--touch-target);
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: 8px 12px;
+  min-height: var(--touch-target);
+  width: 100%;
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+select {
+  cursor: pointer;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
 }

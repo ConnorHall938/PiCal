@@ -1,53 +1,25 @@
 .AppShell {
-  height: 100vh;
-  display: flex;
-}
-
-/* Left ~80% */
-.CalendarPane {
-  flex:  0 0 80%;               /* 4 parts */
   display: flex;
   flex-direction: column;
-  padding: 12px;
-  box-sizing: border-box;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
 }
 
-/* Right ~20% */
-.RightPane {
-  flex: 0 0 20%;               /* 1 part */
-  border-left: 1px solid #ddd;
-  padding: 12px;
-  box-sizing: border-box;
-}
-
-/* Simple top toolbar */
-.Toolbar {
+.AppShell__content {
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.Title {
-  margin: 0;
-  font-size: 18px;
+.AppShell__tab {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.ViewButtons button {
-  margin-left: 8px;
+.AppShell__tab--hidden {
+  display: none;
 }
-
-.ViewButtons .active {
-  font-weight: bold;
-}
-
-/* Where the calendar view will live */
-.CalendarSurface {
-  flex: 1;               /* take remaining height */
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 12px;
-  box-sizing: border-box;
-}
-

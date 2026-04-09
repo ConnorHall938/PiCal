@@ -1,0 +1,149 @@
+.CalendarView {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Override react-big-calendar default styles for dark theme */
+.CalendarView .rbc-calendar {
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.CalendarView .rbc-toolbar {
+  display: none;
+}
+
+.CalendarView .rbc-header {
+  padding: 8px 4px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.CalendarView .rbc-month-view,
+.CalendarView .rbc-time-view,
+.CalendarView .rbc-agenda-view {
+  border-color: var(--color-border);
+}
+
+.CalendarView .rbc-month-row {
+  border-color: var(--color-border);
+}
+
+.CalendarView .rbc-day-bg {
+  border-color: var(--color-border);
+}
+
+.CalendarView .rbc-day-bg.rbc-today {
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg));
+}
+
+.CalendarView .rbc-off-range-bg {
+  background: color-mix(in srgb, var(--color-bg) 60%, #000);
+}
+
+.CalendarView .rbc-date-cell {
+  padding: 4px 8px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.CalendarView .rbc-date-cell.rbc-now {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.CalendarView .rbc-event {
+  background: var(--color-accent-dim);
+  color: var(--color-text);
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+}
+
+.CalendarView .rbc-event:hover {
+  background: color-mix(in srgb, var(--color-accent) 30%, var(--color-surface));
+}
+
+.CalendarView .rbc-event.event--cancelled {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.CalendarView .rbc-event.event--moved {
+  border-left: 3px solid var(--color-warning);
+}
+
+.CalendarView .rbc-time-slot {
+  border-color: var(--color-border);
+}
+
+.CalendarView .rbc-timeslot-group {
+  border-color: var(--color-border);
+}
+
+.CalendarView .rbc-time-content {
+  border-color: var(--color-border);
+}
+
+.CalendarView .rbc-time-header {
+  border-color: var(--color-border);
+}
+
+.CalendarView .rbc-time-header-content {
+  border-color: var(--color-border);
+}
+
+.CalendarView .rbc-current-time-indicator {
+  background: var(--color-accent);
+}
+
+.CalendarView .rbc-show-more {
+  color: var(--color-accent);
+  background: transparent;
+  font-size: 0.75rem;
+}
+
+.CalendarView .rbc-agenda-table {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.CalendarView .rbc-agenda-date-cell,
+.CalendarView .rbc-agenda-time-cell {
+  color: var(--color-text-muted);
+}
+
+.CalendarView .rbc-label {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+/* Event content layout */
+.CalEvent {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  overflow: hidden;
+}
+
+.CalEvent__title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.CalEvent__person {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

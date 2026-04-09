@@ -35,6 +35,7 @@ func (s *Server) routes() {
 
 	(&endpoints.EventsDeps{DB: s.DB}).Register(s.Mux, dbTimeout)
 	(&endpoints.OccurrenceDeps{DB: s.DB}).Register(s.Mux, dbTimeout)
+	endpoints.NewBlindsDeps().Register(s.Mux, dbTimeout)
 }
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {

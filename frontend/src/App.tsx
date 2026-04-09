@@ -1,72 +1,27 @@
-import { useState, useEffect, useRef } from 'react'
-import './App.css'
-
-type ViewMode = "day" | "week" | "month";
-
-function useReconnect(intervalMs = 5000) {
-  const wasOffline = useRef(false)
-  useEffect(() => {
-    const id = setInterval(async () => {
-      try {
-        const res = await fetch('/health')
-        if (res.ok) {
-          if (wasOffline.current) window.location.reload(); wasOffline.current = false
-        } else {
-          wasOffline.current = true
-        }
-      } catch {
-        wasOffline.current = true
-      }
-    }, intervalMs)
-    return () => clearInterval(id)
-  }, [intervalMs])
-}
+import { useState } from 'react';
+import './App.css';
+import { CalendarTab } from './components/Calendar/CalendarTab';
+import { BlindsTab } from './components/Blinds/BlindsTab';
+import { TabBar, type Tab } from './components/TabBar/TabBar';
+import { useReconnect } from './hooks/useReconnect';
 
 function App() {
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
   useReconnect();
+  const [activeTab, setActiveTab] = useState<Tab>('calendar');
 
   return (
     <div className="AppShell">
-      <main className="CalendarPane">
-        <header className="Toolbar">
-          <h1 className="Title">PiCal</h1>
-
-          <div className="ViewButtons">
-            <button
-              className={viewMode === "day" ? "active" : ""}
-              onClick={() => setViewMode("day")}
-            >
-              Day
-            </button>
-            <button
-              className={viewMode === "week" ? "active" : ""}
-              onClick={() => setViewMode("week")}
-            >
-              Week
-            </button>
-            <button
-              className={viewMode === "month" ? "active" : ""}
-              onClick={() => setViewMode("month")}
-            >
-              Month
-            </button>
-          </div>
-        </header>
-
-        <div className="CalendarSurface">
-          <div className="CalendarDayBox">
-            Currently showing: <b>{viewMode}</b>
-          </div>
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="AppShell__content">
+        <div className={`AppShell__tab${activeTab !== 'calendar' ? ' AppShell__tab--hidden' : ''}`}>
+          <CalendarTab />
         </div>
-      </main>
-
-      <aside className="RightPane">
-        <h2>Right panel</h2>
-        <p>Reserved for now.</p>
-      </aside>
+        <div className={`AppShell__tab${activeTab !== 'blinds' ? ' AppShell__tab--hidden' : ''}`}>
+          <BlindsTab />
+        </div>
+      </div>
     </div>
   );
 }
 
-export default App
+export default App;

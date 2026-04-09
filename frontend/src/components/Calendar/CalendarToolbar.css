@@ -1,0 +1,103 @@
+.CalendarToolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.CalendarToolbar__views {
+  display: flex;
+  gap: 2px;
+  background: var(--color-surface-alt);
+  border-radius: var(--border-radius);
+  padding: 3px;
+}
+
+.CalendarToolbar__view-btn {
+  padding: 6px 14px;
+  min-height: unset;
+  border-radius: calc(var(--border-radius) - 2px);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.CalendarToolbar__view-btn.active {
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+
+.CalendarToolbar__view-btn:hover:not(.active) {
+  color: var(--color-text);
+}
+
+.CalendarToolbar__nav {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.CalendarToolbar__nav-btn {
+  width: var(--touch-target);
+  height: var(--touch-target);
+  min-height: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius);
+  font-size: 1.2rem;
+  color: var(--color-text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.CalendarToolbar__nav-btn:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.CalendarToolbar__today-btn {
+  padding: 6px 14px;
+  min-height: unset;
+  border-radius: var(--border-radius);
+  font-size: 0.85rem;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.CalendarToolbar__today-btn:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.CalendarToolbar__date {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.CalendarToolbar__add-btn {
+  width: var(--touch-target);
+  height: var(--touch-target);
+  min-height: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+  border-radius: 50%;
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.CalendarToolbar__add-btn:hover {
+  background: color-mix(in srgb, var(--color-accent) 30%, var(--color-surface));
+}
