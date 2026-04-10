@@ -457,8 +457,17 @@ cat > /home/pical/.config/labwc/rc.xml << 'LABWCEOF'
 </labwc_config>
 LABWCEOF
 
-# labwc autostart - poll for the host to be ready, then launch chromium
+# labwc autostart - Just call kiosk
 cat > /home/pical/.config/labwc/autostart << 'LABWCEOF'
+#!/bin/bash
+
+# Run kiosk
+/home/pical/.config/labwc/autostart
+LABWCEOF
+chmod +x /home/pical/.config/labwc/autostart
+
+# kiosk - poll for the host to be ready, then launch chromium
+cat > /home/pical/.config/labwc/kiosk.sh << 'LABWCKIOSKEOF'
 #!/bin/bash
 
 # Source runtime config so PICAL_PORT is always current
@@ -490,8 +499,8 @@ exec chromium \
     --enable-features=OverlayScrollbar \
     --start-fullscreen \
     "${PICAL_KIOSK_URL}"
-LABWCEOF
-chmod +x /home/pical/.config/labwc/autostart
+LABWCKIOSKEOF
+chmod +x /home/pical/.config/labwc/kiosk.sh
 
 # kanshi config - set DSI output rotation (90° CCW)
 cat > /home/pical/.config/kanshi/config << 'KANSHIEOF'
@@ -517,7 +526,7 @@ User=pical
 PAMName=login
 Type=simple
 TTYPath=/dev/tty1
-ExecStart=/usr/bin/labwc -s /home/pical/.config/labwc/autostart
+ExecStart=/usr/bin/labwc
 Restart=always
 RestartSec=5
 Environment=HOME=/home/pical
