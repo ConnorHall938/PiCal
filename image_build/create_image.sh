@@ -462,7 +462,7 @@ cat > /home/pical/.config/labwc/autostart << 'LABWCEOF'
 #!/bin/bash
 
 # Run kiosk
-/home/pical/.config/labwc/autostart
+/home/pical/.config/labwc/kiosk.sh
 LABWCEOF
 chmod +x /home/pical/.config/labwc/autostart
 
