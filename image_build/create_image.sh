@@ -480,8 +480,13 @@ done
 kanshi &
 
 # Launch chromium in kiosk mode
-chromium --kiosk --noerrdialogs --disable-infobars --no-first-run \
-    --enable-features=OverlayScrollbar --start-fullscreen \
+chromium 
+    --kiosk \
+    --noerrdialogs \
+    --disable-infobars \
+    --no-first-run \
+    --enable-features=OverlayScrollbar \
+    --start-fullscreen \
     "${PICAL_KIOSK_URL}" &
 LABWCEOF
 chmod +x /home/pical/.config/labwc/autostart
@@ -499,29 +504,6 @@ WLR_NO_HARDWARE_CURSORS=1
 LABWCEOF
 
 chown -R pical:pical /home/pical/.config
-
-# Create systemd service for kiosk (PAMName=login grants logind seat/input access)
-# No hard dependency on pical.service — the autostart script polls the host directly
-cat > /etc/systemd/system/pical-kiosk.service << EOF
-[Unit]
-Description=PiCal Kiosk
-After=network.target
-
-[Service]
-User=pical
-PAMName=login
-Type=simple
-TTYPath=/dev/tty1
-ExecStart=/usr/bin/labwc -s /home/pical/.config/labwc/autostart
-Restart=always
-RestartSec=5
-Environment=HOME=/home/pical
-
-[Install]
-WantedBy=graphical.target
-EOF
-
-systemctl enable pical-kiosk.service
 
 # Disable this setup service
 echo "[5/5] Finalizing..."
