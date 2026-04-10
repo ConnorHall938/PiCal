@@ -99,7 +99,7 @@ load_env() {
     source "${ENV_FILE}"
     set +a
     
-    local required_vars=(WIFI_SSID WIFI_PASSWORD WIFI_COUNTRY ROOT_PASSWORD PICAL_PASSWORD PICAL_PORT PICAL_REPO_SSH_URL DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD DB_SSLMODE)
+    local required_vars=(WIFI_SSID WIFI_PASSWORD WIFI_COUNTRY ROOT_PASSWORD PICAL_PASSWORD PICAL_PORT PICAL_REPO_SSH_URL DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD DB_SSLMODE SOMFY_TOKEN)
     for var in "${required_vars[@]}"; do
         if [[ -z "${!var:-}" ]]; then
             log_error "Missing required variable: ${var}"
@@ -260,6 +260,8 @@ DB_NAME=${DB_NAME}
 DB_USER=${DB_USER}
 DB_PASSWORD=${DB_PASSWORD}
 DB_SSLMODE=${DB_SSLMODE}
+
+SOMFY_TOKEN=${SOMFY_TOKEN}
 EOF
     
     sudo chown 1000:1000 "${ROOTFS}/opt/pical/.env"
@@ -480,14 +482,14 @@ done
 kanshi &
 
 # Launch chromium in kiosk mode
-chromium 
+exec chromium \
     --kiosk \
     --noerrdialogs \
     --disable-infobars \
     --no-first-run \
     --enable-features=OverlayScrollbar \
     --start-fullscreen \
-    "${PICAL_KIOSK_URL}" &
+    "${PICAL_KIOSK_URL}"
 LABWCEOF
 chmod +x /home/pical/.config/labwc/autostart
 
@@ -502,6 +504,29 @@ KANSHIEOF
 cat > /home/pical/.config/labwc/environment << 'LABWCEOF'
 WLR_NO_HARDWARE_CURSORS=1
 LABWCEOF
+
+# Create systemd service for kiosk (PAMName=login grants logind seat/input access)
+# No hard dependency on pical.service — the autostart script polls the host directly
+cat > /etc/systemd/system/pical-kiosk.service << EOF
+[Unit]
+Description=PiCal Kiosk
+After=network.target
+
+[Service]
+User=pical
+PAMName=login
+Type=simple
+TTYPath=/dev/tty1
+ExecStart=/usr/bin/labwc -s /home/pical/.config/labwc/autostart
+Restart=always
+RestartSec=5
+Environment=HOME=/home/pical
+
+[Install]
+WantedBy=graphical.target
+EOF
+
+systemctl enable pical-kiosk.service
 
 chown -R pical:pical /home/pical/.config
 
