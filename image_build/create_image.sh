@@ -406,12 +406,6 @@ HOME=/root make build
 chmod +x /opt/pical/bin/server
 chown -R pical:pical /opt/pical
 
-# Install bundled Chromium extensions
-echo "Installing Chromium extensions..."
-mkdir -p /opt/pical/extensions
-cp -r /opt/pical/image_build/chromium_extensions/on-screen-keyboard /opt/pical/extensions/
-chown -R pical:pical /opt/pical/extensions
-
 # Create systemd service for the app
 echo "[3/5] Creating pical service..."
 cat > /etc/systemd/system/pical.service << EOF
