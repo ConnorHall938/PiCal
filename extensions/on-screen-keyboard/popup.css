@@ -1,0 +1,99 @@
+html, body {
+  margin: 0;
+  padding: 0 10px;
+  font-family: "Segoe UI", sans-serif;
+  min-width: 320px;
+  transition: background-color .3s, color .3s;
+}
+
+body {
+  background-color: rgb(211, 211, 211);
+}
+
+.popup-wrapper {
+  padding: 20px;
+  width: 360px;
+  box-sizing: border-box;
+}
+
+h1 {
+  margin-bottom: 15px;
+  font-size: 20px;
+  text-align: center;
+}
+
+.container {
+  background-color: #f8f8f8;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: background-color .3s, box-shadow .3s;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: center;
+  gap: 20px;
+}
+
+
+
+label {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+select {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: #fafafa;
+  transition: background-color .3s, border-color .3s;
+  box-sizing: border-box;
+}
+
+select:focus {
+  outline: none;
+  border-color: #888;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.12);
+}
+
+.version {
+  margin-top: 10px;
+  font-size: 11px;
+  opacity: 0.65;
+  text-align: center;
+}
+
+body.dark-mode {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+}
+
+body.dark-mode .container {
+  background-color: #2a2a2a;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+}
+
+body.dark-mode select {
+  background-color: #333;
+  border: 1px solid #555;
+  color: #e0e0e0;
+}
+
+body.dark-mode select:focus {
+  border-color: #888;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.12);
+}
+
+body.dark-mode h1,
+body.dark-mode label {
+  color: #ddd;
+}

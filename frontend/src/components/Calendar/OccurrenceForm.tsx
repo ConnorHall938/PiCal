@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { createOccurrence } from '../../api/occurrences';
 import type { Event, Occurrence, OccurrenceInput } from '../../types/api';
-import './EventForm.css'; // reuse same styles
+import './EventForm.css';
+import './OccurrenceForm.css';
 
 interface OccurrenceFormProps {
   events: Event[];
@@ -9,21 +12,13 @@ interface OccurrenceFormProps {
   onCancel: () => void;
 }
 
-function toLocalDatetimeValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
-  );
-}
-
 export function OccurrenceForm({ events, onSuccess, onCancel }: OccurrenceFormProps) {
   const now = new Date();
   const later = new Date(now.getTime() + 60 * 60 * 1000);
 
   const [eventId, setEventId] = useState(events[0]?.eventId ?? '');
-  const [startTime, setStartTime] = useState(toLocalDatetimeValue(now));
-  const [endTime, setEndTime] = useState(toLocalDatetimeValue(later));
+  const [startTime, setStartTime] = useState<Date>(now);
+  const [endTime, setEndTime] = useState<Date | null>(later);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,8 +33,8 @@ export function OccurrenceForm({ events, onSuccess, onCancel }: OccurrenceFormPr
     try {
       const input: OccurrenceInput = {
         eventId,
-        startTime: new Date(startTime).toISOString(),
-        endTime: endTime ? new Date(endTime).toISOString() : undefined,
+        startTime: startTime.toISOString(),
+        endTime: endTime ? endTime.toISOString() : undefined,
       };
       const created = await createOccurrence(input);
       onSuccess(created);
@@ -72,25 +67,38 @@ export function OccurrenceForm({ events, onSuccess, onCancel }: OccurrenceFormPr
           ))}
         </select>
       </div>
+
       <div className="EventForm__field">
-        <label htmlFor="of-start">Start</label>
-        <input
-          id="of-start"
-          type="datetime-local"
-          value={startTime}
-          onChange={(e) => setStartTime(e.target.value)}
+        <label>Start</label>
+        <DatePicker
+          selected={startTime}
+          onChange={(date: Date | null) => date && setStartTime(date)}
+          showTimeSelect
+          timeFormat="HH:mm"
+          timeIntervals={15}
+          dateFormat="dd/MM/yyyy HH:mm"
+          withPortal
+          portalId="datepicker-portal"
           required
         />
       </div>
+
       <div className="EventForm__field">
-        <label htmlFor="of-end">End (optional)</label>
-        <input
-          id="of-end"
-          type="datetime-local"
-          value={endTime}
-          onChange={(e) => setEndTime(e.target.value)}
+        <label>End (optional)</label>
+        <DatePicker
+          selected={endTime}
+          onChange={(date: Date | null) => setEndTime(date)}
+          showTimeSelect
+          timeFormat="HH:mm"
+          timeIntervals={15}
+          dateFormat="dd/MM/yyyy HH:mm"
+          withPortal
+          portalId="datepicker-portal"
+          isClearable
+          placeholderText="No end time"
         />
       </div>
+
       {error && <span className="EventForm__error">{error}</span>}
       <div className="EventForm__actions">
         <button type="submit" className="EventForm__submit" disabled={submitting || events.length === 0}>

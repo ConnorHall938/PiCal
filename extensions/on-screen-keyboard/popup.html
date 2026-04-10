@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>On-Screen Keyboard</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-wrapper">
+    <h1>On-Screen Keyboard</h1>
+
+    <div class="container">
+      <div class="option">
+        <label for="themeSelect">Theme</label>
+        <select id="themeSelect">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+
+      <div class="option">
+        <label for="layoutSelect">Layout</label>
+        <select id="layoutSelect">
+          <option value="default">Default</option>
+          <option value="numpad">Numpad</option>
+        </select>
+      </div>
+
+      <div class="option">
+        <label for="langSelect">Language</label>
+        <select id="langSelect">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+          <option value="ar">العربية (Arabic 101)</option>
+          <option value="ru">Русский</option>
+        </select>
+      </div>
+
+      <div class="option">
+        <label for="visibilitySelect">Visibility</label>
+        <select id="visibilitySelect">
+          <option value="alwayson">Always On</option>
+          <option value="ontextbox">On Input</option>
+          <option value="alwaysoff">Always Off</option>
+        </select>
+      </div>
+
+      <div class="option">
+        <label for="positionSelect">Position</label>
+        <select id="positionSelect">
+          <option value="top-left">Top Left</option>
+          <option value="top-center">Top Center</option>
+          <option value="top-right">Top Right</option>
+          <option value="bottom-left">Bottom Left</option>
+          <option value="bottom-center">Bottom Center</option>
+          <option value="bottom-right">Bottom Right</option>
+          <option value="drag">Draggable</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="version" id="version"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

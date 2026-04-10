@@ -1,0 +1,41 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "icon128.png",
+         "16": "icon16.png",
+         "48": "icon48.png"
+      },
+      "default_popup": "popup.html"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "inject.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_start"
+   }, {
+      "all_frames": false,
+      "js": [ "content_script.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_idle"
+   } ],
+   "description": "On-Screen Keyboard / Virtual Keyboard for chromium based browsers.",
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "128": "icon128.png",
+      "16": "icon16.png",
+      "48": "icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxYCwDW9XOE9klZzKiSk8LP2qoxlJ7S3MX6kB2EnEkIlZtP7/lVx4a0jh3HSCFg9kv9rfvzHtJQgAmNpQd1rpufU2hxbxl0nPbaV/lqCWOHLGcYzg/wGkrm9oCo1zFksALxSMuv74wld+qRZ1v+1QunXkYEIGXdbtNpGAAWHmvlZaZzvGHvC8q64Akn2A6P7U4Y3u2u8gdNA0owUR37mhR9WXkrq6o2lZSzdqz7XvyKMs2SCd/S07N2kN3DNNyCPSzBKz9fG51VjIcKGBoC/KnrzAhlfp5gUkKC3JpixHozaF09ElH+BykEoXcZSvaYWkoCm8Ag9Q2ZCymNbq81JmPwIDAQAB",
+   "manifest_version": 3,
+   "name": "On-Screen Keyboard by LKWFahrer_300KMH",
+   "permissions": [ "storage", "scripting" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "26.01.1",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "inject.js", "keyboard-de.html", "keyboard-en.html", "keyboard-fr.html", "keyboard-ar.html", "keyboard-ru.html", "keyboard.css", "keyboard.js", "keyboard-numpad.html" ]
+   } ]
+}

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>On-Screen Keyboard (RU)</title>
+  <link rel="stylesheet" href="keyboard.css">
+</head>
+<body style="background: transparent; margin: 0; padding: 0;">
+  <div id="keyboard">
+
+    <div id="layout-alpha" class="layout">
+      <div class="row">
+        <button class="key special tab"         data-key="Tab"></button>
+        <button class="key"                      data-lower="й">й</button>
+        <button class="key"                      data-lower="ц">ц</button>
+        <button class="key"                      data-lower="у">у</button>
+        <button class="key"                      data-lower="к">к</button>
+        <button class="key"                      data-lower="е">е</button>
+        <button class="key"                      data-lower="н">н</button>
+        <button class="key"                      data-lower="г">г</button>
+        <button class="key"                      data-lower="ш">ш</button>
+        <button class="key"                      data-lower="щ">щ</button>
+        <button class="key"                      data-lower="з">з</button>
+        <button class="key"                      data-lower="х">х</button>
+        <button class="key"                      data-lower="ъ">ъ</button>
+        <button class="key special backspace"    data-key="Backspace"></button>
+      </div>
+      <div class="row">
+        <button class="key special caps"         data-key="CapsLock">⇪</button>
+        <button class="key"                      data-lower="ф">ф</button>
+        <button class="key"                      data-lower="ы">ы</button>
+        <button class="key"                      data-lower="в">в</button>
+        <button class="key"                      data-lower="а">а</button>
+        <button class="key"                      data-lower="п">п</button>
+        <button class="key"                      data-lower="р">р</button>
+        <button class="key"                      data-lower="о">о</button>
+        <button class="key"                      data-lower="л">л</button>
+        <button class="key"                      data-lower="д">д</button>
+        <button class="key"                      data-lower="ж">ж</button>
+        <button class="key"                      data-lower="э">э</button>
+        <button class="key special enter"        data-key="Enter"></button>
+      </div>
+      <div class="row">
+        <button class="key special shift"        data-key="Shift"></button>
+        <button class="key"                      data-lower="я">я</button>
+        <button class="key"                      data-lower="ч">ч</button>
+        <button class="key"                      data-lower="с">с</button>
+        <button class="key"                      data-lower="м">м</button>
+        <button class="key"                      data-lower="и">и</button>
+        <button class="key"                      data-lower="т">т</button>
+        <button class="key"                      data-lower="ь">ь</button>
+        <button class="key"                      data-lower="б">б</button>
+        <button class="key"                      data-lower="ю">ю</button>
+        <button class="key"                      data-lower=".">.</button>
+      </div>
+      <div class="row bottom-row">
+        <button class="key special symbol-toggle" data-key="SymbolToggle">123</button>
+        <button class="key special space"         data-key=" "></button>
+        <button class="key"                       data-key="@">@</button>
+        <button class="key special copy"          data-key="Copy"></button>
+        <button class="key special paste"         data-key="Paste"></button>
+      </div>
+    </div>
+
+    <div id="layout-symbol" class="layout" style="display: none;">
+      <div class="row">
+        <button class="key" data-lower="1">1</button>
+        <button class="key" data-lower="2">2</button>
+        <button class="key" data-lower="3">3</button>
+        <button class="key" data-lower="4">4</button>
+        <button class="key" data-lower="5">5</button>
+        <button class="key" data-lower="6">6</button>
+        <button class="key" data-lower="7">7</button>
+        <button class="key" data-lower="8">8</button>
+        <button class="key" data-lower="9">9</button>
+        <button class="key" data-lower="0">0</button>
+        <button class="key" data-lower="(">(</button>
+        <button class="key" data-lower=")">)</button>
+        <button class="key special backspace" data-key="Backspace"></button>
+      </div>
+      <div class="row">
+        <button class="key" data-lower="!">!</button>
+        <button class="key" data-lower="?">?</button>
+        <button class="key" data-lower="&">&</button>
+        <button class="key" data-lower="%">%</button>
+        <button class="key" data-lower="#">#</button>
+        <button class="key" data-lower="*">*</button>
+        <button class="key" data-lower="^">^</button>
+        <button class="key" data-lower="~">~</button>
+        <button class="key" data-lower="{">{</button>
+        <button class="key" data-lower="}">}</button>
+        <button class="key" data-lower="<"><</button>
+        <button class="key" data-lower=">">></button>
+      </div>
+      <div class="row">
+        <button class="key" data-lower="+">+</button>
+        <button class="key" data-lower="=">=</button>
+        <button class="key" data-lower=":">:</button>
+        <button class="key" data-lower=";">;</button>
+        <button class="key" data-lower='"'>"</button>
+        <button class="key" data-lower="'">'</button>
+        <button class="key" data-lower="\\">\\</button>
+        <button class="key" data-lower="/">/</button>
+        <button class="key" data-lower="_">_</button>
+        <button class="key" data-lower="$">$</button>
+        <button class="key" data-lower="`">`</button>
+      </div>
+      <div class="row">
+        <button class="key special alpha-toggle" data-key="AlphaToggle">АБВ</button>
+        <button class="key" data-lower="@">@</button>
+        <button class="key" data-lower=",">,</button>
+        <button class="key special space" data-key=" "></button>
+        <button class="key" data-lower=".">.</button>
+        <button class="key" data-lower="-">-</button>
+        <button class="key special enter" data-key="Enter"></button>
+      </div>
+    </div>
+
+  </div>
+  <script src="keyboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  box-sizing: border-box;
+  background-color: #fff;
+}
+
+#keyboard {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.layout {
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0;
+}
+
+.key {
+  width: 60px;
+  height: 60px;
+  margin: 3px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background-color: #eee;
+  font-size: 20px;
+  cursor: pointer;
+  outline: none;
+  text-align: center;
+  line-height: 60px;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.key:active {
+  background-color: #ddd;
+  transform: scale(0.96);
+}
+
+.special {
+  background-color: #ccc;
+}
+
+.space {
+  width: 350px;
+}
+
+.bottom-row {
+  justify-content: flex-start;
+  padding-left: 0 !important;
+}
+
+
+.bottom-row .space {
+  margin: 3px auto;
+}
+
+.row:last-of-type {
+  margin-bottom: 0;
+}
+
+body.dark-mode {
+  background-color: #1E1E1E !important;
+  color: #E0E0E0 !important;
+}
+
+body.dark-mode #keyboard {
+  background-color: #2C2C2C !important;
+  border-radius: 12px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .key {
+  background-color: #3A3A3A !important;
+  color: #FFF !important;
+  border-color: #555 !important;
+}
+
+body.dark-mode .key:active {
+  background-color: #505050 !important;
+}
+
+body.dark-mode .special {
+  background-color: #444 !important;
+}
+
+body.dark-mode .space {
+  background-color: #3A3A3A !important;
+}
+
+.key.hidden {
+  visibility: hidden;
+}
+
+.key.tab {
+  width: 90px;
+}
+.key.caps {
+  width: 100px;
+}
+.key.shift {
+  width: 130px;
+}
+.key.ctrl {
+  width: 70px;
+  margin: 3px; 
+  margin-left: 3px;
+  margin-right: 0;
+  text-transform: uppercase;
+}
+.key.symbol-toggle {
+  width: 70px;
+  font-weight: bold;
+}
+
+.key.backspace,
+.key[data-key="Backspace"] {
+  font-size: 0;
+  background-image: url("fonts/backspace-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+
+.key.enter,
+.key[data-key="Enter"] {
+  font-size: 0;
+  background-image: url("fonts/enter-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+.key.tab,
+.key[data-key="Tab"] {
+  font-size: 0;
+  background-image: url("fonts/tab-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+.key.shift,
+.key[data-key="Shift"] {
+  font-size: 0;
+  background-image: url("fonts/shift-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+.key.shift.active,
+.key.shift.pressed,
+.shift-on .key.shift,
+.key[data-key="Shift"].active,
+.key[data-key="Shift"].pressed {
+  background-image: url("fonts/shift-white-pressed.png");
+}
+.key.caps,
+.key[data-key="CapsLock"] {
+  font-size: 0;
+  background-image: url("fonts/caps-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+
+.key.caps.active,
+.key.caps.pressed,
+.caps-on .key.caps,
+.key[data-key="CapsLock"].active,
+.key[data-key="CapsLock"].pressed {
+  background-image: url("fonts/caps-white-pressed.png");
+}
+.key[data-key=" "] {
+  font-size: 0;
+  background-image: url("fonts/space-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+
+.key[data-key="Copy"] {
+  font-size: 0;
+  background-image: url("fonts/copy-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+
+.key[data-key="Paste"] {
+  font-size: 0;
+  background-image: url("fonts/paste-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+
+.key.space {
+  width: 400px;
+}
+.key.copy,
+.key.paste {
+  width: 100px;
+  font-size: 17px;
+}
+body.dark-mode .key.backspace,
+body.dark-mode .key[data-key="Backspace"] {
+  background-image: url("fonts/backspace-dark.png");
+}
+body.dark-mode .key.enter,
+body.dark-mode .key[data-key="Enter"] {
+  background-image: url("fonts/enter-dark.png");
+}
+body.dark-mode .key.tab,
+body.dark-mode .key[data-key="Tab"] {
+  background-image: url("fonts/tab-dark.png");
+}
+body.dark-mode .key.shift,
+body.dark-mode .key[data-key="Shift"] {
+  background-image: url("fonts/shift-dark.png");
+}
+body.dark-mode .key.shift.active,
+body.dark-mode .key.shift.pressed,
+body.dark-mode .shift-on .key.shift,
+body.dark-mode .key[data-key="Shift"].active,
+body.dark-mode .key[data-key="Shift"].pressed {
+  background-image: url("fonts/shift-dark-pressed.png");
+}
+
+body.dark-mode .key.caps,
+body.dark-mode .key[data-key="CapsLock"] {
+  background-image: url("fonts/caps-dark.png");
+}
+
+body.dark-mode .key.caps.active,
+body.dark-mode .key.caps.pressed,
+body.dark-mode .caps-on .key.caps,
+body.dark-mode .key[data-key="CapsLock"].active,
+body.dark-mode .key[data-key="CapsLock"].pressed {
+  background-image: url("fonts/caps-dark-pressed.png");
+}
+body.dark-mode .key[data-key=" "] {
+  background-image: url("fonts/space-dark.png");
+}
+
+body.dark-mode .key[data-key="Copy"] {
+  background-image: url("fonts/copy-dark.png");
+}
+
+body.dark-mode .key[data-key="Paste"] {
+  background-image: url("fonts/paste-dark.png");
+}
+.row {
+  display: flex;
+  justify-content: flex-start;
+  margin: 6px 0;
+}
+.keyboard-container {
+  z-index: 999999;
+}
+
+.drag-handle {
+  cursor: move;
+  padding: 5px;
+  background: #ccc;
+  text-align: center;
+  user-select: none;
+  font-size: 18px;
+}
+
+#keyboard.numpad-only {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#keyboard.numpad-only .row {
+  justify-content: center;
+  margin: 4px 0;
+}
+
+#keyboard.numpad-only .key {
+  width: 60px !important;
+  height: 60px !important;
+  min-height: 44px;
+  line-height: 60px !important;
+  font-size: 20px;
+}
+
+#keyboard.numpad-only .key.special,
+#keyboard.numpad-only .key.enter,
+#keyboard.numpad-only .key.backspace,
+#keyboard.numpad-only .key.space {
+  width: 60px !important;
+}
+
+
+#keyboard.numpad-only .key.zero {
+  width: 126px !important;
+  line-height: 60px !important;
+}
+
+
+#keyboard.numpad-only .key.backspace {
+  font-size: 0;
+  background-image: url("/fonts/backspace-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+
+#keyboard.numpad-only .key.enter {
+  font-size: 0; 
+  background-image: url("/fonts/enter-white.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
+}
+
+
+
+body.dark-mode #keyboard.numpad-only .key.backspace {
+  background-image: url("fonts/backspace-dark.png");
+}
+
+body.dark-mode #keyboard.numpad-only .key.enter {
+  background-image: url("fonts/enter-dark.png");
+}
+#keyboard.lang-ar .key.special.tab {
+  width: 48px !important;
+}
+
+#keyboard.lang-ar .key.special.backspace {
+  width: 72px !important;
+}
