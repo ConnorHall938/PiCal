@@ -38,7 +38,6 @@ export interface OccurrenceInput {
 export interface Blind {
   id: string;
   name: string;
-  isOpen: boolean;
 }
 
 export interface PagedResponse<T> {

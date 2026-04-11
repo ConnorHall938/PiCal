@@ -28,25 +28,18 @@ export function BlindCard({ blind, onOpen, onClose }: BlindCardProps) {
     <div className="BlindCard">
       <div className="BlindCard__header">
         <span className="BlindCard__name">{blind.name}</span>
-        <span
-          className={`BlindCard__status ${
-            blind.isOpen ? 'BlindCard__status--open' : 'BlindCard__status--closed'
-          }`}
-        >
-          {blind.isOpen ? 'Open' : 'Closed'}
-        </span>
       </div>
       <div className="BlindCard__actions">
         <button
           className="BlindCard__btn BlindCard__btn--open"
-          disabled={busy || blind.isOpen}
+          disabled={busy}
           onClick={() => handle(onOpen)}
         >
           Open
         </button>
         <button
           className="BlindCard__btn BlindCard__btn--close"
-          disabled={busy || !blind.isOpen}
+          disabled={busy}
           onClick={() => handle(onClose)}
         >
           Close

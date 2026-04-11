@@ -6,8 +6,9 @@ import (
 )
 
 type Server struct {
-	DB     *sql.DB
-	Mux    *http.ServeMux
-	Fs     http.Handler
-	APIDir string
+	DB         *sql.DB
+	Mux        *http.ServeMux
+	Fs         http.Handler
+	APIDir     string
+	SomfyToken string
 }

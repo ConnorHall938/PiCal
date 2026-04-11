@@ -42,27 +42,11 @@ export function useBlinds(): BlindsResult {
   }, [tick]);
 
   const open = useCallback(async (id: string) => {
-    // optimistic update
-    setBlinds((prev) => prev.map((b) => (b.id === id ? { ...b, isOpen: true } : b)));
-    try {
-      const updated = await openBlind(id);
-      setBlinds((prev) => prev.map((b) => (b.id === id ? updated : b)));
-    } catch (err: unknown) {
-      // revert
-      setBlinds((prev) => prev.map((b) => (b.id === id ? { ...b, isOpen: false } : b)));
-      throw err;
-    }
+    await openBlind(id);
   }, []);
 
   const close = useCallback(async (id: string) => {
-    setBlinds((prev) => prev.map((b) => (b.id === id ? { ...b, isOpen: false } : b)));
-    try {
-      const updated = await closeBlind(id);
-      setBlinds((prev) => prev.map((b) => (b.id === id ? updated : b)));
-    } catch (err: unknown) {
-      setBlinds((prev) => prev.map((b) => (b.id === id ? { ...b, isOpen: true } : b)));
-      throw err;
-    }
+    await closeBlind(id);
   }, []);
 
   return { blinds, loading, error, open, close, reload };
