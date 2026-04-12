@@ -99,7 +99,7 @@ load_env() {
     source "${ENV_FILE}"
     set +a
     
-    local required_vars=(WIFI_SSID WIFI_PASSWORD WIFI_COUNTRY ROOT_PASSWORD PICAL_PASSWORD PICAL_PORT PICAL_REPO_SSH_URL DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD DB_SSLMODE SOMFY_TOKEN)
+    local required_vars=(WIFI_SSID WIFI_PASSWORD WIFI_COUNTRY ROOT_PASSWORD PICAL_PASSWORD PICAL_PORT PICAL_REPO_SSH_URL DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD DB_SSLMODE SOMFY_TOKEN SOMFY_ENDPOINT)
     for var in "${required_vars[@]}"; do
         if [[ -z "${!var:-}" ]]; then
             log_error "Missing required variable: ${var}"
@@ -262,6 +262,8 @@ DB_PASSWORD=${DB_PASSWORD}
 DB_SSLMODE=${DB_SSLMODE}
 
 SOMFY_TOKEN=${SOMFY_TOKEN}
+SOMFY_ENDPOINT=${SOMFY_ENDPOINT}
+
 EOF
     
     sudo chown 1000:1000 "${ROOTFS}/opt/pical/.env"
@@ -285,9 +287,9 @@ KERNEL=="hidraw*", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="0011", MODE="0660
 SUBSYSTEM=="input", ATTRS{name}=="vc4-hdmi-0", ENV{LIBINPUT_IGNORE_DEVICE}="1"
 SUBSYSTEM=="input", ATTRS{name}=="vc4-hdmi-1", ENV{LIBINPUT_IGNORE_DEVICE}="1"
 
-# Goodix touchscreen: map to DSI output and apply calibration matrix for 90° CCW rotation
-# Calibration matrix for 90° CCW (270° CW): 0 1 0 -1 0 1
-ACTION=="add|change", KERNEL=="event[0-9]*", ATTRS{name}=="*Goodix Capacitive TouchScreen*", ENV{WL_OUTPUT}="DSI-2", ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1"
+# Goodix touchscreen: map to DSI output and apply calibration matrix for 90° CW rotation
+# Calibration matrix for 90° CW: 0 1 0 -1 0 1
+ACTION=="add|change", KERNEL=="event[0-9]*", ATTRS{name}=="*Goodix Capacitive TouchScreen*", ENV{WL_OUTPUT}="DSI-2", ENV{LIBINPUT_CALIBRATION_MATRIX}="0 -1 1 1 0 0"
 EOF
 
     log_info "UDEV rules installed"
@@ -504,10 +506,10 @@ exec chromium \
 LABWCKIOSKEOF
 chmod +x /home/pical/.config/labwc/kiosk.sh
 
-# kanshi config - set DSI output rotation (90° CCW)
+# kanshi config - set DSI output rotation (90° CW)
 cat > /home/pical/.config/kanshi/config << 'KANSHIEOF'
 profile {
-    output DSI-2 mode 720x1280@60Hz position 0,0 transform 270
+    output DSI-2 mode 720x1280@60Hz position 0,0 transform 90
 }
 KANSHIEOF
 
@@ -541,8 +543,13 @@ systemctl enable pical-kiosk.service
 
 chown -R pical:pical /home/pical/.config
 
+# Install certificates
+echo "[5/6] Installing certificates"
+wget https://ca.overkiz.com/overkiz-root-ca-2048.crt -O /usr/local/share/ca-certificates/cert.crt
+sudo update-ca-certificates
+
 # Disable this setup service
-echo "[5/5] Finalizing..."
+echo "[6/6] Finalizing..."
 systemctl disable pical-first-boot.service
 
 echo "=========================================="
@@ -603,7 +610,7 @@ configure_system() {
     sudo chmod 440 "${ROOTFS}/etc/sudoers.d/pical"
     
     # Hostname
-    echo "pical" | sudo tee "${ROOTFS}/etc/hostname" > /dev/null
+    echo "picalprod" | sudo tee "${ROOTFS}/etc/hostname" > /dev/null
     sudo sed -i 's/raspberrypi/pical/g' "${ROOTFS}/etc/hosts"
     
     # Disable first-boot wizard
