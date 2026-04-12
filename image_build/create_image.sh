@@ -610,7 +610,7 @@ configure_system() {
     sudo chmod 440 "${ROOTFS}/etc/sudoers.d/pical"
     
     # Hostname
-    echo "picalprod" | sudo tee "${ROOTFS}/etc/hostname" > /dev/null
+    echo "pical" | sudo tee "${ROOTFS}/etc/hostname" > /dev/null
     sudo sed -i 's/raspberrypi/pical/g' "${ROOTFS}/etc/hosts"
     
     # Disable first-boot wizard
